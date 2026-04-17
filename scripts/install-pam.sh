@@ -40,7 +40,7 @@ done
 
 USER_NAME="$(logname)"
 echo ""
-echo ">> Smoke test — pamtester against each service (wrong password; DO NOT use fingerprint):"
+echo ">> Smoke test 1/2 — wrong password against each service (DO NOT use fingerprint):"
 for SVC in kde kscreenlocker; do
   echo ""
   echo "   --- service: $SVC ---"
@@ -49,5 +49,31 @@ done
 
 echo ""
 echo ">> Target: real time well under 200 ms for BOTH services."
-echo ">> Service 'kde' is the one kscreenlocker_greet actually opens at runtime."
-echo ">> If still slow, re-run pam-diagnose.sh."
+echo ""
+echo ">> Smoke test 2/2 — CORRECT password verification against service 'kde'."
+echo "   This catches the case where the wrong-password path happens to fail"
+echo "   correctly but the stack rejects valid passwords too (lockout bug)."
+echo "   pamtester will prompt for your login password — type it."
+echo ""
+if pamtester kde "$USER_NAME" authenticate; then
+  echo ">> Authentication successful. PAM stack accepts the real password."
+  echo ">> Service 'kde' is the one kscreenlocker_greet actually opens at runtime."
+  echo ">> Safe to lock the session now. If unlock is still slow, re-run pam-diagnose.sh."
+else
+  echo ""
+  echo "!! AUTHENTICATION FAILED WITH CORRECT PASSWORD — ABORT."
+  echo "!! This would lock you out of the real greeter. Reverting both PAM files."
+  for DST in "${TARGETS[@]}"; do
+    BAK="$DST.bak.$DATE_SUFFIX"
+    if [[ -f "$BAK" ]]; then
+      install -m644 "$BAK" "$DST"
+      echo "   Restored $DST from $BAK"
+    else
+      rm -f "$DST"
+      echo "   Removed $DST (no backup — was absent before install)"
+    fi
+  done
+  echo ""
+  echo "!! Reverted. Do NOT lock the session until pam/kscreenlocker.optimized is fixed."
+  exit 1
+fi

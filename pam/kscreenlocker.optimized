@@ -18,10 +18,16 @@
 # pam_faildelay delay=0 cancels the default 2s post-failure delay of pam_unix
 # so wrong passwords respond instantly — fine on a personal laptop where the
 # attacker (you) already has physical access.
-auth    optional    pam_faildelay.so delay=0
-auth    required    pam_unix.so nullok try_first_pass nodelay
-auth    requisite   pam_deny.so
-auth    required    pam_permit.so
+#
+# IMPORTANT: the [success=1 default=ignore] control flag makes pam_unix skip
+# past the next module (pam_deny) on success. Using plain `required` here was
+# a lockout bug (246995d, fixed 2026-04-17): correct password → pam_unix OK →
+# stack continues → pam_deny always fails → whole auth FAILS. This mirrors
+# the exact control flags used by /etc/pam.d/common-auth for pam_unix.
+auth    optional                    pam_faildelay.so delay=0
+auth    [success=1 default=ignore]  pam_unix.so nullok try_first_pass nodelay
+auth    requisite                   pam_deny.so
+auth    required                    pam_permit.so
 
 # --- Account ---
 @include common-account
