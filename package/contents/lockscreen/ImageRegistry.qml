@@ -81,20 +81,12 @@ Item {
     }
 
     // Forward navigation. If we're sitting mid-history (user pressed Left
-    // earlier), step forward through it. Otherwise fetch a new image and mark
-    // the CURRENT one as disliked — that's the "skip forever" semantics.
+    // earlier), step forward through it. Otherwise fetch a new unseen image
+    // and append to history. No dislike side-effect — Right just cycles.
     function next() {
         if (_historyPos < _history.length - 1) {
             _historyPos += 1
             return "file://" + _history[_historyPos]
-        }
-        // Entering new territory: dislike the current image (skip forever).
-        if (_historyPos >= 0) {
-            var cur = _history[_historyPos]
-            for (var i = 0; i < _entries.length; i++) {
-                if (_entries[i].path === cur) _entries[i].disliked = true
-            }
-            _writeManifest()
         }
         var list = _orderedUsable()
         if (list.length === 0) list = _entries
