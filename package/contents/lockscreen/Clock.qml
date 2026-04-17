@@ -1,10 +1,14 @@
 import QtQuick 2.15
 
-Column {
+Item {
     id: root
-    spacing: 8
-    property bool compact: false   // compact=true → big time, date hidden
+    property bool compact: false
+    property alias dateOpacity: dateText.opacity
     property var _now: new Date()
+
+    // Fixed natural height for smoother animations
+    implicitWidth: timeText.implicitWidth
+    implicitHeight: timeText.implicitHeight + dateText.implicitHeight + 8
 
     Timer {
         interval: 1000
@@ -15,26 +19,27 @@ Column {
     }
 
     Text {
+        id: timeText
         anchors.horizontalCenter: parent.horizontalCenter
+        y: 0
         color: "white"
-        font.pixelSize: 80
-        font.weight: Font.Light
+        font.family: "Noto Sans"
+        font.pixelSize: 96
+        font.weight: Font.Thin
+        font.letterSpacing: -2
         text: Qt.formatTime(root._now, "HH:mm")
         transformOrigin: Item.Center
-        scale: root.compact ? 1.75 : 1.0
-        Behavior on scale { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
     }
 
     Text {
-        id: dateLabel
+        id: dateText
         anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: timeText.bottom
+        anchors.topMargin: 4
         color: "white"
-        font.pixelSize: 22
+        font.family: "Noto Sans"
+        font.pixelSize: 18
+        font.weight: Font.Normal
         text: Qt.formatDate(root._now, "dddd, d MMMM yyyy")
-        opacity: root.compact ? 0.0 : 0.8
-        height: root.compact ? 0 : implicitHeight
-        clip: true
-        Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-        Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
     }
 }
