@@ -200,7 +200,7 @@ Item {
     // goes into the void.
     Timer {
         id: graceRestartTimer
-        interval: 500
+        interval: 50
         repeat: false
         onTriggered: {
             if (typeof authenticator !== "undefined" && authenticator !== null) {
