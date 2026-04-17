@@ -6,14 +6,25 @@ if [[ "$EUID" -ne 0 ]]; then
   exit 1
 fi
 
-PAM_LIVE="/etc/pam.d/kde"
-PAM_TIMED="/etc/pam.d/kde-timed"
+# Plasma 5.27's kscreenlocker uses the PAM service name "kscreenlocker".
+# On Kubuntu 24.04 that file doesn't exist by default — PAM falls back to
+# /etc/pam.d/other → common-auth, which includes pam_fprintd with a 10s timeout.
+# That fingerprint wait is almost certainly the 3+s unlock delay.
+
+SERVICE="kscreenlocker"
+PAM_LIVE="/etc/pam.d/$SERVICE"
+PAM_OTHER="/etc/pam.d/other"
+PAM_TIMED="/etc/pam.d/${SERVICE}-timed"
 LOG="/tmp/pam-time.log"
 PROBE="/tmp/pam-time.sh"
 
-if [[ ! -f "$PAM_LIVE" ]]; then
-  echo "No $PAM_LIVE — is this Kubuntu with Plasma?"
-  exit 1
+if [[ -f "$PAM_LIVE" ]]; then
+  SOURCE_FOR_PROBE="$PAM_LIVE"
+  echo ">> Using $PAM_LIVE as the source to profile"
+else
+  SOURCE_FOR_PROBE="$PAM_OTHER"
+  echo ">> $PAM_LIVE does not exist — PAM falls back to $PAM_OTHER"
+  echo ">> Profiling $PAM_OTHER instead (plus its @include targets)"
 fi
 
 echo ">> Writing probe to $PROBE"
@@ -24,9 +35,29 @@ exit 0
 EOF
 chmod +x "$PROBE"
 
-echo ">> Building $PAM_TIMED from $PAM_LIVE"
+echo ">> Building $PAM_TIMED"
 rm -f "$LOG"
-awk -v probe="$PROBE" '
+
+# Inline-expand @include directives so we see per-line timings of the real chain
+expand_pam() {
+  local file="$1"
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^@include[[:space:]]+([a-zA-Z0-9_-]+)$ ]]; then
+      local inc="/etc/pam.d/${BASH_REMATCH[1]}"
+      if [[ -f "$inc" ]]; then
+        echo "# ---- BEGIN @include ${BASH_REMATCH[1]} ----"
+        expand_pam "$inc"
+        echo "# ---- END @include ${BASH_REMATCH[1]} ----"
+      else
+        echo "$line"
+      fi
+    else
+      echo "$line"
+    fi
+  done < "$file"
+}
+
+expand_pam "$SOURCE_FOR_PROBE" | awk -v probe="$PROBE" '
 BEGIN { i = 0 }
 /^#/ || /^\s*$/ { print; next }
 {
@@ -35,15 +66,15 @@ BEGIN { i = 0 }
   print
   printf "auth  optional  pam_exec.so quiet seteuid %s AFTER_%d\n", probe, i
 }
-' "$PAM_LIVE" > "$PAM_TIMED"
+' > "$PAM_TIMED"
 
-echo ">> Running pamtester x3 with wrong password (expects failures)"
+echo ">> Running pamtester x3 with wrong password (expects failures; NO FINGER on reader)"
 for i in 1 2 3; do
-  echo "wrong-password" | pamtester kde-timed "$(logname)" authenticate 2>/dev/null || true
+  echo "wrong-password" | pamtester "${SERVICE}-timed" "$(logname)" authenticate 2>/dev/null || true
 done
 
 echo ""
-echo ">> Per-module elapsed times (median of 3 runs):"
+echo ">> Per-module elapsed times (median of 3 runs, longest first):"
 python3 - <<'PY'
 import collections, statistics
 from pathlib import Path
@@ -64,19 +95,23 @@ for ts_s, _type, _svc, tag in events:
         i = tag[6:]
         before = run.pop(i, None)
         if before:
-            deltas[i].append((ts - before) / 1e6)  # ns -> ms
+            deltas[i].append((ts - before) / 1e6)
 
 rows = [(int(i), statistics.median(v)) for i, v in deltas.items()]
 rows.sort(key=lambda r: -r[1])
-for i, ms in rows:
+for i, ms in rows[:10]:
     print(f"  module #{i:>2}: {ms:7.2f} ms")
 
 print("")
-print(">> Map module numbers to actual lines:")
+print(">> Map the top-timing module numbers to their PAM lines:")
 import subprocess
-pam_live = Path("/etc/pam.d/kde").read_text().splitlines()
+expanded = subprocess.run(["bash","-c",
+    'source_file=/etc/pam.d/kscreenlocker; [[ -f "$source_file" ]] || source_file=/etc/pam.d/other;'
+    'expand() { while IFS= read -r line; do if [[ "$line" =~ ^@include[[:space:]]+([a-zA-Z0-9_-]+)$ ]]; then expand "/etc/pam.d/${BASH_REMATCH[1]}"; else echo "$line"; fi; done < "$1"; };'
+    'expand "$source_file"'
+], capture_output=True, text=True).stdout.splitlines()
 i = 0
-for line in pam_live:
+for line in expanded:
     s = line.strip()
     if not s or s.startswith("#"):
         continue
@@ -85,4 +120,5 @@ for line in pam_live:
 PY
 
 echo ""
-echo ">> Done. Cleanup: sudo rm $PAM_TIMED $PROBE $LOG"
+echo ">> Done. Cleanup:"
+echo "   sudo rm $PAM_TIMED $PROBE $LOG"

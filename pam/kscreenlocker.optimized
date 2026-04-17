@@ -1,0 +1,23 @@
+# /etc/pam.d/kscreenlocker — optimized for fast unlock on Kubuntu 24.04
+#
+# Bypasses common-auth to skip pam_fprintd (10s fingerprint timeout on
+# missed scan). Result: unlock is validated by pam_unix against the user's
+# password hash directly. Fingerprint unlock is still available everywhere
+# else (sudo, login, etc.) because we only override this one service.
+#
+# Mirrors the sections common-auth / common-account / common-password /
+# common-session would have provided, minus fprintd.
+
+# --- Auth: just pam_unix, no fingerprint ---
+auth    required    pam_unix.so nullok try_first_pass
+auth    requisite   pam_deny.so
+auth    required    pam_permit.so
+
+# --- Account ---
+@include common-account
+
+# --- Password (not typically invoked by the screen locker, but keep for completeness) ---
+@include common-password
+
+# --- Session ---
+@include common-session
