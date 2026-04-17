@@ -4,37 +4,47 @@ Item {
     id: root
     signal clicked()
     property bool saved: false
-    width: 36; height: 36
+    width: label.x + label.width
+    height: 22
 
-    Rectangle {
-        id: btn
-        anchors.fill: parent
-        radius: 18
-        color: "#80000000"
-        border.color: "#aaffffff"; border.width: 1
+    Row {
+        id: hintRow
+        spacing: 6
         opacity: hover.containsMouse ? 1.0 : 0.55
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
-        Image {
-            anchors.centerIn: parent
-            width: 18; height: 18
-            source: root.saved
-                ? Qt.resolvedUrl("icons/heart-filled.svg")
-                : Qt.resolvedUrl("icons/heart-outline.svg")
-            sourceSize: Qt.size(36, 36)
-            fillMode: Image.PreserveAspectFit
-            smooth: true
+        Rectangle {
+            width: 22; height: 22; radius: 3
+            border.color: "white"; border.width: 1
+            color: "transparent"
+            Text {
+                anchors.centerIn: parent
+                color: "white"
+                text: "S"
+                font.pixelSize: 12
+                font.family: "sans-serif"
+            }
         }
 
-        MouseArea {
-            id: hover
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.clicked()
+        Text {
+            id: label
+            anchors.verticalCenter: parent.verticalCenter
+            color: "white"
+            font.pixelSize: 13
+            font.family: "sans-serif"
+            text: root.saved ? "Saved ✓" : "Save"
         }
     }
 
+    MouseArea {
+        id: hover
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.clicked()
+    }
+
+    // Toast: floats above the hint
     Rectangle {
         id: toast
         anchors.right: root.right
@@ -55,7 +65,7 @@ Item {
             text: ""
         }
 
-        NumberAnimation on opacity {
+        NumberAnimation on toast.opacity {
             id: toastAnim
             duration: 2000
             from: 1.0; to: 0.0

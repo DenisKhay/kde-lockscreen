@@ -1,21 +1,31 @@
 import QtQuick 2.15
 
-Rectangle {
+Row {
     id: root
     signal clicked()
-    width: 36; height: 36; radius: 18
-    color: "#80000000"
-    border.color: "#aaffffff"; border.width: 1
+    spacing: 6
     opacity: hover.containsMouse ? 1.0 : 0.55
     Behavior on opacity { NumberAnimation { duration: 150 } }
 
-    Image {
-        anchors.centerIn: parent
-        width: 18; height: 18
-        source: Qt.resolvedUrl("icons/skip.svg")
-        sourceSize: Qt.size(36, 36)
-        fillMode: Image.PreserveAspectFit
-        smooth: true
+    Rectangle {
+        width: 22; height: 22; radius: 3
+        border.color: "white"; border.width: 1
+        color: "transparent"
+        Text {
+            anchors.centerIn: parent
+            color: "white"
+            text: "N"
+            font.pixelSize: 12
+            font.family: "sans-serif"
+        }
+    }
+
+    Text {
+        anchors.verticalCenter: parent.verticalCenter
+        color: "white"
+        font.pixelSize: 13
+        font.family: "sans-serif"
+        text: "Next"
     }
 
     MouseArea {
