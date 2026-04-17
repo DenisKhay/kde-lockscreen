@@ -4,8 +4,10 @@ Item {
     id: root
     signal clicked()
     property bool saved: false
-    width: label.x + label.width
-    height: 22
+    implicitWidth: hintRow.implicitWidth
+    implicitHeight: hintRow.implicitHeight
+    width: implicitWidth
+    height: implicitHeight
 
     Row {
         id: hintRow
