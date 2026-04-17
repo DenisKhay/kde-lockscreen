@@ -23,6 +23,7 @@ import signal
 
 from dbus_next.aio import MessageBus
 from dbus_next import BusType, DBusError
+from dbus_next.introspection import Node
 
 log = logging.getLogger("kde-lockscreen-fprintd-watcher")
 
@@ -36,6 +37,32 @@ FPRINT_SERVICE = "net.reactivated.Fprint"
 FPRINT_MANAGER_PATH = "/net/reactivated/Fprint/Manager"
 FPRINT_MANAGER_IFACE = "net.reactivated.Fprint.Manager"
 FPRINT_DEVICE_IFACE = "net.reactivated.Fprint.Device"
+
+# Hand-crafted minimal introspection. Live introspection of fprintd via
+# dbus_next fails because fprintd publishes property names with dashes
+# (e.g. "num-enroll-stages") that dbus_next's spec-strict validator rejects
+# with InvalidMemberNameError. We don't need the broken properties — only
+# Claim/Release/VerifyStart/VerifyStop methods and the VerifyStatus signal.
+_FPRINT_DEVICE_XML = """<node>
+  <interface name="net.reactivated.Fprint.Device">
+    <method name="Claim"><arg type="s" name="username" direction="in"/></method>
+    <method name="Release"/>
+    <method name="VerifyStart"><arg type="s" name="finger_name" direction="in"/></method>
+    <method name="VerifyStop"/>
+    <signal name="VerifyStatus">
+      <arg type="s" name="result"/>
+      <arg type="b" name="done"/>
+    </signal>
+  </interface>
+</node>"""
+
+_FPRINT_MANAGER_XML = """<node>
+  <interface name="net.reactivated.Fprint.Manager">
+    <method name="GetDefaultDevice">
+      <arg type="o" name="device" direction="out"/>
+    </method>
+  </interface>
+</node>"""
 
 
 def _username() -> str:
@@ -56,20 +83,16 @@ class FprintWatcher:
     async def _device_iface(self):
         if self._device is not None:
             return self._device
-        try:
-            mgr_intro = await self.bus.introspect(FPRINT_SERVICE, FPRINT_MANAGER_PATH)
-        except DBusError as exc:
-            log.warning("fprintd unavailable: %s", exc)
-            return None
-        mgr = self.bus.get_proxy_object(FPRINT_SERVICE, FPRINT_MANAGER_PATH, mgr_intro)
+        mgr_node = Node.parse(_FPRINT_MANAGER_XML)
+        mgr = self.bus.get_proxy_object(FPRINT_SERVICE, FPRINT_MANAGER_PATH, mgr_node)
         mgr_iface = mgr.get_interface(FPRINT_MANAGER_IFACE)
         try:
             path = await mgr_iface.call_get_default_device()
         except DBusError as exc:
             log.warning("no fprintd default device: %s", exc)
             return None
-        dev_intro = await self.bus.introspect(FPRINT_SERVICE, path)
-        dev = self.bus.get_proxy_object(FPRINT_SERVICE, path, dev_intro)
+        dev_node = Node.parse(_FPRINT_DEVICE_XML)
+        dev = self.bus.get_proxy_object(FPRINT_SERVICE, path, dev_node)
         self._device = dev.get_interface(FPRINT_DEVICE_IFACE)
         log.info("fprintd device: %s", path)
         return self._device
