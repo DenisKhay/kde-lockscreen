@@ -1,4 +1,4 @@
-VERSION := 0.1.0
+VERSION := 0.1.1
 NAME    := kde-lockscreen
 
 .PHONY: help install install-dev uninstall test preview dist clean version
