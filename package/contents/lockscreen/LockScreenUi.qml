@@ -54,6 +54,10 @@ Item {
 
     ImageRegistry {
         id: registry
+        // Screen.name is attached to the root Item via its Window; keys the
+        // per-screen state file (~/.cache/kde-lockscreen/state-{name}.json)
+        // so each monitor resumes where it left off across lock cycles.
+        screenKey: Screen.name
         Component.onCompleted: root.currentImage = pickForScreen(0)
     }
 

@@ -8,6 +8,11 @@ Item {
     property var _history: []    // ordered list of paths shown this session
     property int _historyPos: -1 // pointer into _history
     property string saveDir: _homeDir() + "/Pictures/kde-lockscreen-saves"
+    // Screen identifier (set by the caller to e.g. "DP-2"). Used to key the
+    // per-screen state file so that each monitor resumes where it left off
+    // on the next lock instead of restarting from the top of the priority
+    // list. Empty string → shared file (single-monitor fallback).
+    property string screenKey: ""
 
     readonly property int unseenRemaining: _orderedUsable()
         .filter(function (e) { return !_seen[e.path] }).length
@@ -35,6 +40,45 @@ Item {
         } catch (e) {
             console.warn("ImageRegistry: manifest load failed:", e)
             _entries = []
+        }
+    }
+
+    // Per-screen persistent state so each monitor resumes at its last image
+    // across lock cycles. Only explicit ← returns further back in history.
+    function _stateUrl() {
+        var key = screenKey !== "" ? screenKey : "default"
+        return "file://" + _homeDir() + "/.cache/kde-lockscreen/state-" + key + ".json"
+    }
+
+    function _loadState() {
+        var xhr = new XMLHttpRequest()
+        xhr.open("GET", _stateUrl(), false)
+        try {
+            xhr.send(null)
+            if (xhr.status === 200 || xhr.status === 0) {
+                var s = JSON.parse(xhr.responseText)
+                if (Array.isArray(s.history)) _history = s.history
+                if (typeof s.historyPos === "number") _historyPos = s.historyPos
+                if (s.seen && typeof s.seen === "object") _seen = s.seen
+                return true
+            }
+        } catch (e) { /* no prior state — fall through */ }
+        return false
+    }
+
+    function _saveState() {
+        var xhr = new XMLHttpRequest()
+        xhr.open("PUT", _stateUrl(), false)
+        try {
+            xhr.send(JSON.stringify({
+                version: 1,
+                screenKey: screenKey,
+                history: _history,
+                historyPos: _historyPos,
+                seen: _seen
+            }))
+        } catch (e) {
+            console.warn("ImageRegistry: state write failed:", e)
         }
     }
 
@@ -69,8 +113,25 @@ Item {
         return _orderedUsable()
     }
 
-    // Initial image on greeter load. Pushes it into the nav history.
+    // Initial image on greeter load. If persistent state exists AND its
+    // current path is still usable, resume there. Otherwise pick the top of
+    // the priority list and seed the history.
     function pickForScreen(index) {
+        var restored = _loadState()
+        if (restored && _historyPos >= 0 && _historyPos < _history.length) {
+            var current = _history[_historyPos]
+            // Verify the remembered image still exists in the manifest and
+            // isn't disliked. If not, drop state and fall through to a fresh
+            // pick — saving the session isn't worth serving a broken file.
+            for (var k = 0; k < _entries.length; k++) {
+                if (_entries[k].path === current && !_entries[k].disliked) {
+                    _seen[current] = true
+                    return "file://" + current
+                }
+            }
+            // Remembered path no longer valid → reset session state.
+            _history = []; _historyPos = -1; _seen = {}
+        }
         var list = _orderedUsable()
         if (list.length === 0) list = _entries
         if (list.length === 0) return Qt.resolvedUrl("fallback.jpg").toString()
@@ -80,6 +141,7 @@ Item {
             _history = [pick.path]
             _historyPos = 0
         }
+        _saveState()
         return "file://" + pick.path
     }
 
@@ -89,6 +151,7 @@ Item {
     function next() {
         if (_historyPos < _history.length - 1) {
             _historyPos += 1
+            _saveState()
             return "file://" + _history[_historyPos]
         }
         var list = _orderedUsable()
@@ -103,6 +166,7 @@ Item {
         _history.push(pick.path)
         _historyPos = _history.length - 1
         _maybeRequestRefill()
+        _saveState()
         return "file://" + pick.path
     }
 
@@ -110,6 +174,7 @@ Item {
     function previous() {
         if (_historyPos <= 0) return ""
         _historyPos -= 1
+        _saveState()
         return "file://" + _history[_historyPos]
     }
 
