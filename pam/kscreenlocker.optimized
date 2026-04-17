@@ -1,4 +1,10 @@
-# /etc/pam.d/kscreenlocker — optimized for fast unlock on Kubuntu 24.04
+# /etc/pam.d/kde AND /etc/pam.d/kscreenlocker — fast unlock on Kubuntu 24.04
+#
+# Installed to BOTH paths by scripts/install-pam.sh. Plasma 5.27's
+# kscreenlocker_greet opens PAM service "kde" (hardcoded in upstream
+# greeterapp.cpp:139). The "kscreenlocker" copy is kept for the pamtester
+# sanity check and forward-compat with a future KDE rename. See
+# vault://kde-lockscreen/bugs/pam-service-name-mismatch for the full debug.
 #
 # Bypasses common-auth to skip pam_fprintd (10s fingerprint timeout on
 # missed scan). Result: unlock is validated by pam_unix against the user's

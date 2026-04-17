@@ -25,18 +25,22 @@ kwriteconfig5 --file kscreenlockerrc --group Greeter --key Theme org.kde.breeze.
 kwriteconfig5 --file kscreenlockerrc --group Greeter --key LookAndFeelPackage org.kde.breeze.desktop
 
 echo ">> Restoring PAM"
-# install-pam.sh writes /etc/pam.d/kscreenlocker and backs up to kscreenlocker.bak.YYYY-MM-DD
-BACKUP="$(ls -t /etc/pam.d/kscreenlocker.bak.* 2>/dev/null | head -n1 || true)"
-if [[ -n "$BACKUP" ]]; then
-  sudo install -m644 "$BACKUP" /etc/pam.d/kscreenlocker
-  echo ">> Restored /etc/pam.d/kscreenlocker from $BACKUP"
-elif [[ -f /etc/pam.d/kscreenlocker ]]; then
-  # No prior backup means the file was created fresh — safer to remove it so
-  # PAM falls back to /etc/pam.d/other.
-  sudo rm -f /etc/pam.d/kscreenlocker
-  echo ">> Removed /etc/pam.d/kscreenlocker (no backup to restore from)"
-else
-  echo ">> No PAM file to revert. Skipping."
-fi
+# install-pam.sh writes BOTH /etc/pam.d/kde and /etc/pam.d/kscreenlocker (see
+# scripts/install-pam.sh for the why). Restore each symmetrically.
+for TARGET in /etc/pam.d/kde /etc/pam.d/kscreenlocker; do
+  BACKUP="$(ls -t "${TARGET}".bak.* 2>/dev/null | head -n1 || true)"
+  if [[ -n "$BACKUP" ]]; then
+    sudo install -m644 "$BACKUP" "$TARGET"
+    echo ">> Restored $TARGET from $BACKUP"
+  elif [[ -f "$TARGET" ]]; then
+    # No prior backup → we created it fresh. Remove it so PAM falls back to
+    # /etc/pam.d/other (which is the pre-install state for both paths on
+    # Kubuntu 24.04).
+    sudo rm -f "$TARGET"
+    echo ">> Removed $TARGET (no backup to restore from)"
+  else
+    echo ">> $TARGET absent and no backup — nothing to do."
+  fi
+done
 
 echo ">> Done."
