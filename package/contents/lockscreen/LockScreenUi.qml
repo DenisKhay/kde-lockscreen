@@ -139,15 +139,15 @@ Item {
         id: pin
         pinLength: root.pinLength
         autoSubmit: root.autoSubmit
-        onSubmitted: {
-            console.log("LockScreenUi: onSubmitted len=" + pin.text.length
+        onSubmitted: function (pw) {
+            console.log("LockScreenUi: onSubmitted len=" + pw.length
                         + " authPresent=" + (typeof authenticator !== "undefined"))
             if (typeof authenticator !== "undefined" && authenticator !== null) {
-                authenticator.tryUnlock(pin.text)
+                authenticator.tryUnlock(pw)
             } else {
                 // --testing: accept "1234". Flash a green tick so it's obvious
-                // that Enter was processed. Everything else shakes.
-                if (pin.text === "1234") {
+                // Enter fired the submit path. Everything else shakes.
+                if (pw === "1234") {
                     testOkFlash.running = true
                 } else {
                     root.rootWrongPin()

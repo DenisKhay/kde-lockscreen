@@ -6,7 +6,10 @@ Item {
     property bool autoSubmit: true
     property alias text: input.text
 
-    signal submitted(string pin)
+    // Parameter is named `pw` (not `pin`) because the lockscreen uses `id: pin`
+    // on the containing PinInput — a signal parameter named `pin` would shadow
+    // that id in the handler, making `pin.text` undefined. Real bug we hit.
+    signal submitted(string pw)
     signal wrongPin()
 
     // Last text we've already emitted submitted() for. Prevents re-firing the
