@@ -20,9 +20,9 @@ python3 -m venv "$VENV"
 
 echo ">> Installing systemd user units"
 mkdir -p "$UNIT_DIR"
-cp "$REPO/systemd/"*.service "$REPO/systemd/"*.timer "$UNIT_DIR/"
+cp "$REPO/systemd/"*.service "$REPO/systemd/"*.timer "$REPO/systemd/"*.path "$UNIT_DIR/"
 systemctl --user daemon-reload
-systemctl --user enable --now kde-lockscreen-fetcher.timer kde-lockscreen-inhibitd.service
+systemctl --user enable --now kde-lockscreen-fetcher.timer kde-lockscreen-inhibitd.service kde-lockscreen-refill.path
 
 echo ">> Seeding image cache"
 systemctl --user start kde-lockscreen-fetcher.service || true

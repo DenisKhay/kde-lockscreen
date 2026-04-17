@@ -4,15 +4,15 @@ Item {
     id: registry
 
     property var _entries: []
-    property int _offset: 0
+    property var _seen: ({})     // path -> true for images already shown this session
+    property int _pickIndex: 0
     property string saveDir: _homeDir() + "/Pictures/kde-lockscreen-saves"
-    property string cacheDir: Qt.resolvedUrl("file://" + Qt.application.arguments[0])  // placeholder
-        .toString()
-    property string manifestPath: {
-        // kscreenlocker_greet runs as the user; $HOME is available via env.
-        var home = Qt.application.organizationName ? "" : ""
-        return "file://" + (Qt.resolvedUrl("/home/" + Qt.application.name) + "")
-    }
+
+    readonly property int unseenRemaining: _orderedUsable()
+        .filter(function (e) { return !_seen[e.path] }).length
+
+    // Priority: bing (1) → wikimedia (2) → nasa (3) → picsum (4)
+    readonly property var _priority: ({bing: 1, wikimedia: 2, nasa: 3, picsum: 4})
 
     signal entriesChanged()
 
@@ -21,9 +21,10 @@ Item {
         var mkReq = new XMLHttpRequest()
         mkReq.open("PUT", "file://" + saveDir + "/.keep", false)
         try { mkReq.send("") } catch (e) { /* ignore */ }
+
         var xhr = new XMLHttpRequest()
         var url = "file://" + _homeDir() + "/.cache/kde-lockscreen/manifest.json"
-        xhr.open("GET", url, false)  // synchronous OK — file is local + tiny
+        xhr.open("GET", url, false)
         try {
             xhr.send(null)
             if (xhr.status === 200 || xhr.status === 0) {
@@ -37,30 +38,55 @@ Item {
     }
 
     function _homeDir() {
-        // Qt.resolvedUrl gives us a file:// path we can extract HOME from.
-        // Hardcoded fallback because kscreenlocker_greet may not expose env.
         return "/home/denisk"
     }
 
+    function _priorityOf(e) {
+        return registry._priority[e.source] !== undefined
+            ? registry._priority[e.source]
+            : 99
+    }
+
+    function _orderedUsable() {
+        var arr = _entries.slice().filter(function (e) { return !e.disliked })
+        arr.sort(function (a, b) {
+            var pa = registry._priorityOf(a)
+            var pb = registry._priorityOf(b)
+            if (pa !== pb) return pa - pb
+            // Same source: newer date first
+            if (a.date > b.date) return -1
+            if (a.date < b.date) return 1
+            return 0
+        })
+        return arr
+    }
+
     function _usable() {
-        return _entries.filter(function (e) { return !e.disliked })
+        return _orderedUsable()
     }
 
     function pickForScreen(index) {
-        var list = _usable()
-        // If everything is disliked, fall back to the full pool rather than
-        // showing the solid fallback — user still wants *something*.
+        var list = _orderedUsable()
         if (list.length === 0) list = _entries
         if (list.length === 0) return Qt.resolvedUrl("fallback.jpg").toString()
-        var d = new Date()
-        var seed = (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate())
-                 + index * 17 + _offset
-        return "file://" + list[Math.abs(seed) % list.length].path
+
+        // Prefer first unseen in priority order.
+        var pick = null
+        for (var i = 0; i < list.length; i++) {
+            if (!_seen[list[i].path]) { pick = list[i]; break }
+        }
+        // If everything seen, wrap around using pickIndex.
+        if (!pick) pick = list[_pickIndex % list.length]
+
+        _seen[pick.path] = true
+        _pickIndex += 1
+        _maybeRequestRefill()
+        return "file://" + pick.path
     }
 
-    // Called after a "next image" gesture to ensure the next pickForScreen
-    // returns a different entry.
-    function advance() { _offset += 1 }
+    function advance() {
+        // Kept as no-op for backward compat; pickForScreen itself advances.
+    }
 
     function markDisliked(filePath) {
         var p = filePath.replace(/^file:\/\//, "")
@@ -90,8 +116,18 @@ Item {
         }
     }
 
+    // When the unseen pool runs thin, touch a trigger file. A systemd .path
+    // unit watches this and spawns the Picsum refill.
+    function _maybeRequestRefill() {
+        if (unseenRemaining <= 10) {
+            var req = new XMLHttpRequest()
+            var url = "file://" + _homeDir() + "/.cache/kde-lockscreen/refill-request"
+            req.open("PUT", url, false)
+            try { req.send(String(Date.now())) } catch (e) { /* ignore */ }
+        }
+    }
+
     function saveImage(filePath) {
-        // Returns one of: "saved", "exists", "failed"
         var p = filePath.replace(/^file:\/\//, "")
         var entry = null
         for (var i = 0; i < _entries.length; i++) {
@@ -99,24 +135,20 @@ Item {
         }
         if (!entry) return "failed"
 
-        // Build target: <saveDir>/<source>-<date>-<basename>
         var basename = p.split("/").pop()
         var target = saveDir + "/" + entry.source + "-" + entry.date + "-" + basename
 
-        // Check existence via HEAD
         var check = new XMLHttpRequest()
         check.open("HEAD", "file://" + target, false)
         try { check.send(null) } catch (e) {}
         if (check.status === 200) return "exists"
 
-        // Read source
         var reader = new XMLHttpRequest()
         reader.open("GET", "file://" + p, false)
         reader.overrideMimeType("text/plain; charset=x-user-defined")
         try { reader.send(null) } catch (e) { return "failed" }
         if (reader.status !== 200 && reader.status !== 0) return "failed"
 
-        // Write target
         var writer = new XMLHttpRequest()
         writer.open("PUT", "file://" + target, false)
         try { writer.send(reader.responseText) } catch (e) { return "failed" }
