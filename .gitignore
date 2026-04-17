@@ -9,3 +9,5 @@ build/
 .idea/
 .vscode/
 *.swp
+# Release tarballs built by `make dist`
+kde-lockscreen-*.tar.gz
