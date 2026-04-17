@@ -9,10 +9,21 @@ Item {
     width: implicitWidth
     height: implicitHeight
 
+    // Translucent dark pill for readability on any photo
+    Rectangle {
+        anchors.fill: hintRow
+        anchors.margins: -8
+        anchors.leftMargin: -10
+        anchors.rightMargin: -10
+        color: "#60000000"
+        radius: 14
+        opacity: hintRow.opacity
+    }
+
     Row {
         id: hintRow
         spacing: 6
-        opacity: hover.containsMouse ? 1.0 : 0.55
+        opacity: hover.containsMouse ? 1.0 : 0.9
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
         Rectangle {
@@ -27,6 +38,7 @@ Item {
                 text: "↓"
                 font.pixelSize: 13
                 font.family: "DejaVu Sans"
+                font.weight: Font.Medium
             }
         }
 
@@ -36,6 +48,7 @@ Item {
             color: "white"
             font.pixelSize: 13
             font.family: "DejaVu Sans"
+            font.weight: Font.Medium
             text: root.saved ? "Saved ✓" : "Save"
         }
     }
