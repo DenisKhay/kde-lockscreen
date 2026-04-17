@@ -65,12 +65,15 @@ Item {
         }
     ]
 
+    // Use a Translate transform so the shake doesn't fight the centerIn anchor
+    // that LockScreenUi uses to position this stack.
+    transform: Translate { id: shakeXform; x: 0 }
     SequentialAnimation {
         id: shakeAnim
-        NumberAnimation { target: root; property: "x"; to: root.x - 20; duration: 50 }
-        NumberAnimation { target: root; property: "x"; to: root.x + 20; duration: 50 }
-        NumberAnimation { target: root; property: "x"; to: root.x - 12; duration: 50 }
-        NumberAnimation { target: root; property: "x"; to: root.x; duration: 50 }
+        NumberAnimation { target: shakeXform; property: "x"; to: -20; duration: 50 }
+        NumberAnimation { target: shakeXform; property: "x"; to: 20;  duration: 50 }
+        NumberAnimation { target: shakeXform; property: "x"; to: -12; duration: 50 }
+        NumberAnimation { target: shakeXform; property: "x"; to: 0;   duration: 50 }
     }
     onShake: shakeAnim.start()
 }

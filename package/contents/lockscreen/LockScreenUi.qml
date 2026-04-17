@@ -105,6 +105,27 @@ Item {
         }
     }
 
+    // --testing-only: briefly flash "UNLOCKED" to prove submit reached here.
+    Text {
+        id: testOkLabel
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 40
+        color: "#9effa0"
+        font.pixelSize: 24
+        font.family: "DejaVu Sans"
+        font.weight: Font.Bold
+        text: "UNLOCKED (test mode)"
+        opacity: 0
+        SequentialAnimation on opacity {
+            id: testOkFlash
+            running: false
+            NumberAnimation { from: 0; to: 1; duration: 150 }
+            PauseAnimation { duration: 1200 }
+            NumberAnimation { from: 1; to: 0; duration: 400 }
+        }
+    }
+
     CenterStack {
         id: center
         anchors.centerIn: parent
@@ -121,12 +142,18 @@ Item {
         autoSubmit: root.autoSubmit
         idleSubmitMs: root.idleSubmitMs
         onSubmitted: {
+            console.log("LockScreenUi: onSubmitted len=" + pin.text.length
+                        + " authPresent=" + (typeof authenticator !== "undefined"))
             if (typeof authenticator !== "undefined" && authenticator !== null) {
-                // Real kscreenlocker: hand the password to PAM.
                 authenticator.tryUnlock(pin.text)
             } else {
-                // --testing mode: no authenticator is injected. Accept "1234".
-                if (pin.text !== "1234") root.rootWrongPin()
+                // --testing: accept "1234". Flash a green tick so it's obvious
+                // that Enter was processed. Everything else shakes.
+                if (pin.text === "1234") {
+                    testOkFlash.running = true
+                } else {
+                    root.rootWrongPin()
+                }
             }
         }
     }
