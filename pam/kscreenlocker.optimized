@@ -8,8 +8,12 @@
 # Mirrors the sections common-auth / common-account / common-password /
 # common-session would have provided, minus fprintd.
 
-# --- Auth: just pam_unix, no fingerprint ---
-auth    required    pam_unix.so nullok try_first_pass
+# --- Auth: just pam_unix, no fingerprint, no artificial fail-delay ---
+# pam_faildelay delay=0 cancels the default 2s post-failure delay of pam_unix
+# so wrong passwords respond instantly — fine on a personal laptop where the
+# attacker (you) already has physical access.
+auth    optional    pam_faildelay.so delay=0
+auth    required    pam_unix.so nullok try_first_pass nodelay
 auth    requisite   pam_deny.so
 auth    required    pam_permit.so
 
