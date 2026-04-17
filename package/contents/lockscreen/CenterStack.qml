@@ -14,10 +14,6 @@ Column {
     Clock {
         anchors.horizontalCenter: parent.horizontalCenter
         compact: !root.active
-        // Extra top padding in compact mode so the huge clock visually sits
-        // where the normal clock+date would.
-        topPadding: root.active ? 0 : 60
-        Behavior on topPadding { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
     }
 
     Text {
