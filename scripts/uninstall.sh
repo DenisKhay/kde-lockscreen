@@ -9,12 +9,14 @@ echo ">> Disabling systemd units"
 systemctl --user disable --now \
   kde-lockscreen-fetcher.timer \
   kde-lockscreen-inhibitd.service \
-  kde-lockscreen-refill.timer 2>/dev/null || true
+  kde-lockscreen-refill.timer \
+  kde-lockscreen-fprintd-watcher.service 2>/dev/null || true
 rm -f "$UNIT_DIR/kde-lockscreen-fetcher.service" \
       "$UNIT_DIR/kde-lockscreen-fetcher.timer" \
       "$UNIT_DIR/kde-lockscreen-inhibitd.service" \
       "$UNIT_DIR/kde-lockscreen-refill.service" \
-      "$UNIT_DIR/kde-lockscreen-refill.timer"
+      "$UNIT_DIR/kde-lockscreen-refill.timer" \
+      "$UNIT_DIR/kde-lockscreen-fprintd-watcher.service"
 systemctl --user daemon-reload
 
 echo ">> Removing package + daemon"

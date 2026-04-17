@@ -1,0 +1,13 @@
+[Unit]
+Description=KDE lockscreen fingerprint unlock watcher
+Documentation=file://%h/.local/lib/kde-lockscreen/README.md
+After=plasma-core.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/kde-lockscreen/venv/bin/python -m kde_lockscreen.fprintd_watcher
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

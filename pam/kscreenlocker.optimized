@@ -6,26 +6,23 @@
 # sanity check and forward-compat with a future KDE rename. See
 # vault://kde-lockscreen/bugs/pam-service-name-mismatch for the full debug.
 #
-# Parallel fingerprint + password auth. pam_fprintd runs finger verification
-# asynchronously via D-Bus and shows "place your finger" through pam_conv.
-# When the user types a password, pam_conv delivers it to pam_fprintd first,
-# which cancels the finger op and falls through to pam_unix. So:
-#   - finger on reader → unlock via pam_fprintd (~0.5s)
-#   - typed password → pam_fprintd cancels, pam_unix validates (<200ms)
-#   - nothing → pam_fprintd times out at 3s (we lowered from the default 10s
-#     as a safety valve; also removes the pain of the default wait)
+# Password-only auth. Fingerprint unlock is handled by a separate user
+# daemon (kde_lockscreen.fprintd_watcher) that runs fprintd Verify while the
+# session is locked and calls logind Session.UnlockSession on a match —
+# entirely outside PAM. pam_fprintd was briefly in this stack (9515cf7,
+# reverted) but doesn't poll pam_conv, so it blocked the password path for
+# its full timeout and only gave the user ~3s of finger activity per lock.
 #
 # pam_faildelay delay=0 cancels the default 2s post-failure delay of pam_unix
 # so wrong passwords respond instantly — fine on a personal laptop where the
 # attacker (you) already has physical access.
 #
-# IMPORTANT: control flags mirror /etc/pam.d/common-auth exactly (minus the
-# shorter fprintd timeout). Plain `required` on pam_unix was a prior lockout
-# bug (246995d → d205863, 2026-04-17): correct password → pam_unix OK →
-# stack continues → pam_deny always fails → whole auth FAILS. [success=N
-# default=ignore] jumps past pam_deny on success.
+# IMPORTANT: control flags mirror /etc/pam.d/common-auth exactly. Plain
+# `required` on pam_unix was a prior lockout bug (246995d → d205863,
+# 2026-04-17): correct password → pam_unix OK → stack continues → pam_deny
+# always fails → whole auth FAILS. [success=1 default=ignore] jumps past
+# pam_deny on success.
 auth    optional                    pam_faildelay.so delay=0
-auth    [success=2 default=ignore]  pam_fprintd.so max-tries=1 timeout=3
 auth    [success=1 default=ignore]  pam_unix.so nullok try_first_pass nodelay
 auth    requisite                   pam_deny.so
 auth    required                    pam_permit.so
