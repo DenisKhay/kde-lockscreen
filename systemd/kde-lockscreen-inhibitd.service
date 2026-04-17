@@ -5,8 +5,13 @@ After=plasma-core.target
 [Service]
 Type=simple
 ExecStart=%h/.local/lib/kde-lockscreen/venv/bin/python -m kde_lockscreen.inhibitd
-Restart=on-failure
+# Restart=always covers SIGKILL too (on-failure should also, but on 2026-04-17
+# this service was killed -9 and never restarted for ~3h, breaking image saves
+# silently). Wider StartLimit window so an actual broken loop still gets caught.
+Restart=always
 RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=10
 
 [Install]
 WantedBy=default.target
