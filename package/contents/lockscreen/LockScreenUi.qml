@@ -6,8 +6,12 @@ Item {
     anchors.fill: parent
     focus: true
 
-    // From Plasma's lockscreen injection. At --testing time, authenticator may be null.
-    property var authenticator: typeof authenticator !== "undefined" ? authenticator : null
+    // `authenticator` is a CONTEXT PROPERTY injected by kscreenlocker_greet.
+    // Do NOT declare `property var authenticator: ...` here — a same-named
+    // property shadows the context property and is initialised to `undefined`
+    // before its own expression evaluates, which means tryUnlock would never
+    // fire. Access the context property directly below, guarded by typeof for
+    // --testing mode (where it is not injected).
 
     // Config (populated from KConfig in Plasma; defaults here for --testing).
     property int pinLength: 6
@@ -117,11 +121,12 @@ Item {
         autoSubmit: root.autoSubmit
         idleSubmitMs: root.idleSubmitMs
         onSubmitted: {
-            if (root.authenticator) {
-                root.authenticator.tryUnlock(pin.text)
+            if (typeof authenticator !== "undefined" && authenticator !== null) {
+                // Real kscreenlocker: hand the password to PAM.
+                authenticator.tryUnlock(pin.text)
             } else {
-                // Testing mode: simulate wrong PIN on non-"1234" input
-                if (pin.text !== "1234") rootWrongPin()
+                // --testing mode: no authenticator is injected. Accept "1234".
+                if (pin.text !== "1234") root.rootWrongPin()
             }
         }
     }
@@ -134,9 +139,12 @@ Item {
         center.shake()
     }
 
-    // Wire authenticator signals if available
+    // Wire the PAM authenticator's failed signal so the center-stack shakes
+    // on wrong password. `authenticator` is the context property; in --testing
+    // mode it's undefined and the binding resolves to null, so the Connections
+    // is inert there.
     Connections {
-        target: root.authenticator
+        target: typeof authenticator !== "undefined" ? authenticator : null
         ignoreUnknownSignals: true
         function onFailed() { root.rootWrongPin() }
     }
