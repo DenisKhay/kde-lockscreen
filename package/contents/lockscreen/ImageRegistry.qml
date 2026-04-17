@@ -153,10 +153,9 @@ Item {
     }
 
     // QML can't safely copy binary files (XHR PUT mangles bytes > 127 via
-    // UTF-8 encoding). So we write a save-request file that the inhibit
-    // daemon polls and turns into a real shutil.copy. Target filename is
-    // encoded into the source path we send, so the daemon doesn't have to
-    // know about manifest entries.
+    // UTF-8 encoding) and Qt file:// XHR only supports GET/PUT — not HEAD.
+    // So we write a save-request file (PUT, always allowed) and let the
+    // inhibit daemon handle the real shutil.copy + dedup.
     function saveImage(filePath) {
         var p = filePath.replace(/^file:\/\//, "")
         var entry = null
@@ -165,25 +164,10 @@ Item {
         }
         if (!entry) return "failed"
 
-        // Idempotency check: has this exact file already been saved?
-        var basename = p.split("/").pop()
-        var targetPath = saveDir + "/" + basename
-        var check = new XMLHttpRequest()
-        check.open("HEAD", "file://" + targetPath, false)
-        try { check.send(null) } catch (e) {}
-        if (check.status === 200) return "exists"
-
-        // Append the source path to the save-request file. Multiple requests
-        // batch if the daemon is slow to pick up.
         var reqPath = _homeDir() + "/.cache/kde-lockscreen/save-request"
-        var getExisting = new XMLHttpRequest()
-        getExisting.open("GET", "file://" + reqPath, false)
-        var existing = ""
-        try { getExisting.send(null); existing = getExisting.responseText || "" } catch (e) {}
-
         var writer = new XMLHttpRequest()
         writer.open("PUT", "file://" + reqPath, false)
-        try { writer.send(existing + p + "\n") } catch (e) { return "failed" }
+        try { writer.send(p + "\n") } catch (e) { return "failed" }
 
         markSaved(filePath)
         return "saved"
