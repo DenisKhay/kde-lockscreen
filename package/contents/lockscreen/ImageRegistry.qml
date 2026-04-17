@@ -117,7 +117,13 @@ Item {
     // current path is still usable, resume there. Otherwise pick the top of
     // the priority list and seed the history.
     function pickForScreen(index) {
-        var restored = _loadState()
+        // Reset in-memory state so a re-entry (e.g. onScreenKeyChanged fires
+        // after Component.onCompleted already ran with empty screenKey) loads
+        // fresh from the per-screen file instead of merging partial state.
+        _history = []
+        _historyPos = -1
+        _seen = {}
+        var restored = screenKey !== "" && _loadState()
         if (restored && _historyPos >= 0 && _historyPos < _history.length) {
             var current = _history[_historyPos]
             // Verify the remembered image still exists in the manifest and

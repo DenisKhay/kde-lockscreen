@@ -58,7 +58,16 @@ Item {
         // per-screen state file (~/.cache/kde-lockscreen/state-{name}.json)
         // so each monitor resumes where it left off across lock cycles.
         screenKey: Screen.name
-        Component.onCompleted: root.currentImage = pickForScreen(0)
+        // Screen.name may not be resolved when Component.onCompleted fires
+        // (the Item isn't parented into its final Window yet). Guard with
+        // the non-empty check in both triggers — onScreenKeyChanged catches
+        // the late resolution case.
+        Component.onCompleted: {
+            if (screenKey !== "") root.currentImage = pickForScreen(0)
+        }
+        onScreenKeyChanged: {
+            if (screenKey !== "") root.currentImage = pickForScreen(0)
+        }
     }
 
     BackgroundLayer {
