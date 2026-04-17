@@ -39,7 +39,10 @@ Item {
     }
 
     function _homeDir() {
-        return "/home/denisk"
+        // Placeholder @HOME@ is substituted by scripts/install.sh at install
+        // time so the installed copy carries the real user's home path.
+        // QML itself has no portable $HOME accessor.
+        return "@HOME@"
     }
 
     function _priorityOf(e) {
