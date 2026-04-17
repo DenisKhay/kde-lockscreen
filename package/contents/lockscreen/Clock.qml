@@ -39,11 +39,11 @@ Item {
         id: dateText
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: timeText.bottom
-        anchors.topMargin: 4
+        anchors.topMargin: 6
         color: "white"
         font.family: "DejaVu Sans"
-        font.pixelSize: 18
-        font.weight: Font.Light
+        font.pixelSize: 20
+        font.weight: Font.Medium
         font.letterSpacing: 0.5
         text: Qt.formatDate(root._now, "dddd, d MMMM yyyy")
     }

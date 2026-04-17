@@ -16,9 +16,11 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
         Rectangle {
+            id: btn
             width: 22; height: 22; radius: 3
             border.color: "white"; border.width: 1
             color: "transparent"
+            transformOrigin: Item.Center
             Text {
                 anchors.centerIn: parent
                 color: "white"
@@ -46,38 +48,53 @@ Item {
         onClicked: root.clicked()
     }
 
-    // Toast: floats above the hint
+    // Toast: floats above the hint. Sized and colored to actually catch the
+    // eye — earlier version was too subtle to notice.
     Rectangle {
         id: toast
         anchors.right: root.right
         anchors.bottom: root.top
-        anchors.bottomMargin: 8
-        color: "#cc000000"
-        radius: 6
+        anchors.bottomMargin: 10
+        color: "#f2000000"
+        border.color: "#55ffffff"
+        border.width: 1
+        radius: 8
         visible: opacity > 0
         opacity: 0
-        width: toastText.implicitWidth + 24
-        height: toastText.implicitHeight + 12
+        width: toastText.implicitWidth + 32
+        height: toastText.implicitHeight + 18
 
         Text {
             id: toastText
             anchors.centerIn: parent
             color: "white"
-            font.pixelSize: 13
+            font.pixelSize: 15
+            font.family: "DejaVu Sans"
+            font.weight: Font.Medium
             text: ""
         }
 
-        NumberAnimation on opacity {
+        SequentialAnimation on opacity {
             id: toastAnim
-            duration: 2000
-            from: 1.0; to: 0.0
             running: false
+            NumberAnimation { from: 0.0; to: 1.0; duration: 180 }
+            PauseAnimation { duration: 1800 }
+            NumberAnimation { from: 1.0; to: 0.0; duration: 400; easing.type: Easing.InQuad }
         }
+    }
+
+    // Small "press pulse" on the button itself — instant feedback the click
+    // registered, even if the toast hasn't shown yet.
+    SequentialAnimation {
+        id: pulseAnim
+        running: false
+        NumberAnimation { target: btn; property: "scale"; from: 1.0; to: 1.15; duration: 80 }
+        NumberAnimation { target: btn; property: "scale"; from: 1.15; to: 1.0; duration: 140; easing.type: Easing.OutBack }
     }
 
     function showToast(msg) {
         toastText.text = msg
-        toast.opacity = 1.0
         toastAnim.restart()
+        pulseAnim.restart()
     }
 }

@@ -50,7 +50,7 @@ Item {
         },
         State {
             name: "active"
-            PropertyChanges { target: clock; y: 40; scale: 1.0; dateOpacity: 0.8 }
+            PropertyChanges { target: clock; y: 40; scale: 1.0; dateOpacity: 1.0 }
             PropertyChanges { target: usernameLabel; y: 40 + clock.implicitHeight + 40; opacity: 0.9 }
             PropertyChanges { target: dotsRow; y: 40 + clock.implicitHeight + 40 + usernameLabel.implicitHeight + 24; opacity: 1.0 }
         }
