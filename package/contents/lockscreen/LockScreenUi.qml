@@ -20,7 +20,6 @@ Item {
     property real dimAlpha: 0.0        // disabled by default
     property string fitMode: "cover"
     property bool autoSubmit: true
-    property int idleSubmitMs: 10000
     property string username: Qt.application.organizationName || "denisk"
 
     // Current image path for the primary screen. Multi-monitor split is a v2
@@ -140,7 +139,6 @@ Item {
         id: pin
         pinLength: root.pinLength
         autoSubmit: root.autoSubmit
-        idleSubmitMs: root.idleSubmitMs
         onSubmitted: {
             console.log("LockScreenUi: onSubmitted len=" + pin.text.length
                         + " authPresent=" + (typeof authenticator !== "undefined"))
@@ -159,10 +157,9 @@ Item {
     }
 
     function rootWrongPin() {
-        // Shake but do NOT clear the text — user may want to append more
-        // characters if their configured pinLength is shorter than the real PW.
-        // Escape still clears manually; the idle-submit timer will retry
-        // whatever is in the field after idleSubmitMs of no input.
+        // Shake but do NOT clear — user can append or press Enter again.
+        // Escape clears manually. Submit is only Enter or reaching pinLength
+        // with a new (untried) text; no timeout-based retry.
         center.shake()
     }
 
