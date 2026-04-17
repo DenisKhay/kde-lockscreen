@@ -25,8 +25,29 @@ Item {
     property string currentImage: ""
 
     // Any user input (mouse move, click, key, image gesture) flips this true
-    // and keeps the PIN UI visible even before the first keystroke.
+    // and keeps the PIN UI visible even before the first keystroke. The
+    // idle timer (below) flips it back after inactivity.
     property bool userInteracted: false
+    property int inactivityTimeoutMs: 15000
+
+    // Called from every interaction handler — sets the flag and restarts the
+    // idle countdown from zero.
+    function markInteraction() {
+        userInteracted = true
+        idleTimer.restart()
+    }
+
+    Timer {
+        id: idleTimer
+        interval: root.inactivityTimeoutMs
+        repeat: false
+        onTriggered: {
+            // Only fade back to idle if there's nothing typed. While a PIN is
+            // in the field, keep the UI visible so the user can see what they
+            // typed. (A separate security sweep could clear text here too.)
+            if (pin.text.length === 0) root.userInteracted = false
+        }
+    }
 
     ImageRegistry {
         id: registry
@@ -45,11 +66,11 @@ Item {
     // without stealing events from child MouseAreas (SaveImageHint etc).
     HoverHandler {
         id: hoverTracker
-        onPointChanged: root.userInteracted = true
+        onPointChanged: root.markInteraction()
     }
     TapHandler {
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-        onTapped: root.userInteracted = true
+        onTapped: root.markInteraction()
     }
 
     // Save/skip icons, bottom-right of the screen
@@ -63,7 +84,7 @@ Item {
             id: saveHint
             saved: false
             onClicked: {
-                root.userInteracted = true
+                root.markInteraction()
                 var r = registry.saveImage(root.currentImage)
                 if (r === "saved") { saveHint.showToast("Saved to Pictures"); saveHint.saved = true }
                 else if (r === "exists") saveHint.showToast("Already saved")
@@ -73,7 +94,7 @@ Item {
 
         NextImageHint {
             onClicked: {
-                root.userInteracted = true
+                root.markInteraction()
                 registry.markDisliked(root.currentImage)
                 registry.advance()
                 root.currentImage = registry.pickForScreen(0)
@@ -124,7 +145,7 @@ Item {
 
     // Key routing — load-bearing trick for typing-without-focus
     Keys.onPressed: function (event) {
-        root.userInteracted = true
+        root.markInteraction()
         if (event.key === Qt.Key_Backspace) {
             pin.backspace(); event.accepted = true; return
         }
