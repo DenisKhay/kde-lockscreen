@@ -30,6 +30,7 @@ LOGIND_SERVICE = "org.freedesktop.login1"
 LOGIND_MANAGER_PATH = "/org/freedesktop/login1"
 LOGIND_MANAGER_IFACE = "org.freedesktop.login1.Manager"
 LOGIND_SESSION_IFACE = "org.freedesktop.login1.Session"
+LOGIND_USER_IFACE = "org.freedesktop.login1.User"
 
 FPRINT_SERVICE = "net.reactivated.Fprint"
 FPRINT_MANAGER_PATH = "/net/reactivated/Fprint/Manager"
@@ -43,9 +44,10 @@ def _username() -> str:
 
 
 class FprintWatcher:
-    def __init__(self, bus: MessageBus, username: str) -> None:
+    def __init__(self, bus: MessageBus, username: str, session_path: str) -> None:
         self.bus = bus
         self.username = username
+        self.session_path = session_path
         self._device = None
         self._running = False
         self._task: asyncio.Task | None = None
@@ -132,12 +134,8 @@ class FprintWatcher:
 
     async def _unlock_session(self) -> None:
         try:
-            mgr_intro = await self.bus.introspect(LOGIND_SERVICE, LOGIND_MANAGER_PATH)
-            mgr = self.bus.get_proxy_object(LOGIND_SERVICE, LOGIND_MANAGER_PATH, mgr_intro)
-            mgr_iface = mgr.get_interface(LOGIND_MANAGER_IFACE)
-            session_path = await mgr_iface.call_get_session_by_pid(os.getpid())
-            sess_intro = await self.bus.introspect(LOGIND_SERVICE, session_path)
-            sess = self.bus.get_proxy_object(LOGIND_SERVICE, session_path, sess_intro)
+            sess_intro = await self.bus.introspect(LOGIND_SERVICE, self.session_path)
+            sess = self.bus.get_proxy_object(LOGIND_SERVICE, self.session_path, sess_intro)
             sess_iface = sess.get_interface(LOGIND_SESSION_IFACE)
             await sess_iface.call_unlock()
         except DBusError as exc:
@@ -165,15 +163,51 @@ class FprintWatcher:
             self._task = None
 
 
-async def _session_iface(bus: MessageBus):
+async def _resolve_session_path(bus: MessageBus) -> str:
+    """Find the graphical session path for the current uid.
+
+    GetSessionByPID(getpid()) fails for systemd --user services because the
+    daemon's PID lives under the user manager slice, not in a logind session.
+    Instead ask logind for the User object and read its `Display` property,
+    which is the user's graphical session. Fallback: ListSessions + filter.
+    """
     mgr_intro = await bus.introspect(LOGIND_SERVICE, LOGIND_MANAGER_PATH)
     mgr = bus.get_proxy_object(LOGIND_SERVICE, LOGIND_MANAGER_PATH, mgr_intro)
     mgr_iface = mgr.get_interface(LOGIND_MANAGER_IFACE)
-    session_path = await mgr_iface.call_get_session_by_pid(os.getpid())
+
+    uid = os.getuid()
+    try:
+        user_path = await mgr_iface.call_get_user(uid)
+    except DBusError as exc:
+        raise RuntimeError(f"logind GetUser({uid}) failed: {exc}") from exc
+
+    user_intro = await bus.introspect(LOGIND_SERVICE, user_path)
+    user = bus.get_proxy_object(LOGIND_SERVICE, user_path, user_intro)
+    user_props = user.get_interface("org.freedesktop.DBus.Properties")
+    display_variant = await user_props.call_get(LOGIND_USER_IFACE, "Display")
+    display = display_variant.value  # struct (s, o): (session_id, path)
+    session_path = display[1]
+    if session_path and session_path != "/":
+        return session_path
+
+    # Fallback: no Display session — list all and pick first with a seat.
+    sessions = await mgr_iface.call_list_sessions()
+    for sess_id, sess_uid, _name, seat, path in sessions:
+        if sess_uid == uid and seat:
+            return path
+    raise RuntimeError(f"no graphical session found for uid {uid}")
+
+
+async def _session_iface(bus: MessageBus):
+    session_path = await _resolve_session_path(bus)
     log.info("session path: %s", session_path)
     sess_intro = await bus.introspect(LOGIND_SERVICE, session_path)
     sess = bus.get_proxy_object(LOGIND_SERVICE, session_path, sess_intro)
-    return sess.get_interface(LOGIND_SESSION_IFACE), sess.get_interface("org.freedesktop.DBus.Properties")
+    return (
+        sess.get_interface(LOGIND_SESSION_IFACE),
+        sess.get_interface("org.freedesktop.DBus.Properties"),
+        session_path,
+    )
 
 
 async def main() -> None:
@@ -183,8 +217,8 @@ async def main() -> None:
     )
 
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-    sess_iface, props_iface = await _session_iface(bus)
-    watcher = FprintWatcher(bus, _username())
+    sess_iface, props_iface, session_path = await _session_iface(bus)
+    watcher = FprintWatcher(bus, _username(), session_path)
 
     def on_lock() -> None:
         asyncio.create_task(watcher.start())
