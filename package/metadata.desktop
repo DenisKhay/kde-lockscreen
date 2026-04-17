@@ -11,4 +11,5 @@ X-KDE-PluginInfo-Name=com.denisk.lockscreen
 X-KDE-PluginInfo-Version=0.1.0
 X-KDE-PluginInfo-Website=https://github.com/DenisKhay/kde-lockscreen
 X-KDE-ServiceTypes=Plasma/LookAndFeel
+X-Plasma-APIVersion=2
 X-Plasma-MainScript=defaults
