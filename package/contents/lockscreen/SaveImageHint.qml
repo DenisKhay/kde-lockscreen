@@ -65,7 +65,7 @@ Item {
             text: ""
         }
 
-        NumberAnimation on toast.opacity {
+        NumberAnimation on opacity {
             id: toastAnim
             duration: 2000
             from: 1.0; to: 0.0
