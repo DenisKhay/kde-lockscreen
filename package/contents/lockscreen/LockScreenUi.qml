@@ -125,6 +125,10 @@ Item {
         }
     }
 
+    // True between submit and the authenticator's succeeded/failed response.
+    // Drives the dim-while-checking feedback.
+    property bool submitting: false
+
     CenterStack {
         id: center
         anchors.centerIn: parent
@@ -133,6 +137,8 @@ Item {
         dotSizeMm: root.dotSizeMm
         username: root.username
         active: pin.text.length > 0 || root.userInteracted
+        opacity: root.submitting ? 0.45 : 1.0
+        Behavior on opacity { NumberAnimation { duration: 120 } }
     }
 
     PinInput {
@@ -140,17 +146,15 @@ Item {
         pinLength: root.pinLength
         autoSubmit: root.autoSubmit
         onSubmitted: function (pw) {
-            // Plasma's PAM authenticator API: tryUnlock() kicks off the
-            // session (called once at startup), respond(pw) sends the
-            // password when PAM has prompted for it. We were calling
-            // tryUnlock(pw) which IGNORED the argument — that's why every
-            // unlock was silent.
             console.warn("[LockScreenUi] submit -> respond len=" + pw.length)
+            root.submitting = true
             if (typeof authenticator !== "undefined" && authenticator !== null) {
                 authenticator.respond(pw)
             } else if (pw === "1234") {
                 testOkFlash.running = true
+                root.submitting = false
             } else {
+                root.submitting = false
                 root.rootWrongPin()
             }
         }
@@ -169,11 +173,13 @@ Item {
         ignoreUnknownSignals: true
         function onFailed() {
             console.warn("[LockScreenUi] authenticator.failed")
+            root.submitting = false
             pin.clear()
             root.rootWrongPin()
         }
         function onSucceeded() {
             console.warn("[LockScreenUi] authenticator.succeeded — unlocking")
+            root.submitting = false
             Qt.quit()
         }
         function onPrompt(msg) {
