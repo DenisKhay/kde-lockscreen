@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+    <kcfgfile name=""/>
+    <group name="General">
+        <entry name="pinLength" type="Int"><default>6</default></entry>
+        <entry name="autoSubmit" type="Bool"><default>true</default></entry>
+        <entry name="dotSizeMm" type="Double"><default>4.0</default></entry>
+        <entry name="blurRadius" type="Int"><default>32</default></entry>
+        <entry name="dimAlpha" type="Double"><default>0.4</default></entry>
+        <entry name="fitMode" type="String"><default>smart</default></entry>
+    </group>
+    <group name="Sources">
+        <entry name="bing" type="Bool"><default>true</default></entry>
+        <entry name="wikimedia" type="Bool"><default>true</default></entry>
+        <entry name="nasa" type="Bool"><default>true</default></entry>
+        <entry name="usePicsumInstead" type="Bool"><default>true</default></entry>
+        <entry name="unsplashApiKey" type="String"><default></default></entry>
+    </group>
+    <group name="Save">
+        <entry name="saveDir" type="String"><default>~/Pictures/kde-lockscreen-saves</default></entry>
+    </group>
+</kcfg>
