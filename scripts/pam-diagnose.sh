@@ -41,19 +41,26 @@ rm -f "$LOG"
 # Inline-expand @include directives so we see per-line timings of the real chain
 expand_pam() {
   local file="$1"
+  local line name inc
   while IFS= read -r line; do
-    if [[ "$line" =~ ^@include[[:space:]]+([a-zA-Z0-9_-]+)$ ]]; then
-      local inc="/etc/pam.d/${BASH_REMATCH[1]}"
-      if [[ -f "$inc" ]]; then
-        echo "# ---- BEGIN @include ${BASH_REMATCH[1]} ----"
-        expand_pam "$inc"
-        echo "# ---- END @include ${BASH_REMATCH[1]} ----"
-      else
+    case "$line" in
+      @include\ *|"@include	"*)
+        name="${line#@include }"
+        name="${name#"${name%%[![:space:]]*}"}"  # ltrim
+        name="${name%% *}"
+        inc="/etc/pam.d/${name}"
+        if [[ -f "$inc" ]]; then
+          echo "# ---- BEGIN @include ${name} ----"
+          expand_pam "$inc"
+          echo "# ---- END @include ${name} ----"
+        else
+          echo "$line"
+        fi
+        ;;
+      *)
         echo "$line"
-      fi
-    else
-      echo "$line"
-    fi
+        ;;
+    esac
   done < "$file"
 }
 
