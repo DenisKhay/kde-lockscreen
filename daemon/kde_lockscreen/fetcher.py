@@ -116,10 +116,24 @@ def _run_daily(cfg: configparser.ConfigParser, cache_dir: Path,
 
 def _run_refill(cfg: configparser.ConfigParser, cache_dir: Path,
                 manifest: Manifest, today: str, count: int) -> int:
+    """Top up the Picsum pool so there's always a buffer of unseen images.
+    Self-throttles: exits without network work if cache already has plenty
+    of Picsums. Triggered either by the 5-min timer or by the refill-request
+    file the lockscreen writes when unseen drops below 10."""
+    cap = cfg.getint("Cache", "maxCacheSize", fallback=100)
+    entries = manifest.list()
+    picsum_count = sum(1 for e in entries if e.source == "picsum" and not e.disliked)
+    buffer_target = max(20, cap - len([e for e in entries if e.source != "picsum"]))
+    if picsum_count >= buffer_target:
+        log.info("refill skipped: %d picsum entries already cached (target %d)",
+                 picsum_count, buffer_target)
+        return 0
+
+    to_fetch = min(count, buffer_target - picsum_count)
     use_picsum = cfg.getboolean("Sources", "usePicsumInstead", fallback=True)
     key = cfg.get("Sources", "unsplashApiKey", fallback="")
     fail = 0
-    for _ in range(count):
+    for _ in range(to_fetch):
         try:
             data, meta = picsum.fetch(use_picsum=use_picsum, unsplash_key=key)
             _save(data, meta, cache_dir, manifest, today)

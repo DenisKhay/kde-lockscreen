@@ -1,9 +1,0 @@
-[Unit]
-Description=Trigger KDE lockscreen Picsum refill when the lockscreen runs thin
-
-[Path]
-PathModified=%h/.cache/kde-lockscreen/refill-request
-Unit=kde-lockscreen-refill.service
-
-[Install]
-WantedBy=default.target
