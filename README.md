@@ -46,6 +46,17 @@ make uninstall
 
 Reverts the theme to Breeze, removes systemd units, removes the daemon, and restores the original PAM config from the backup (`/etc/pam.d/kscreenlocker.bak.YYYY-MM-DD`) if one exists.
 
+## Emergency revert (locked out)
+
+If a future change ever breaks unlock, recover from a TTY:
+
+1. **Ctrl+Alt+F4** → drop to a TTY (Ctrl+Alt+F1 returns to GUI).
+2. Log in with username + password — this uses `/etc/pam.d/login`, not the lockscreen PAM, so it works even if our PAM is wedged.
+3. Run `bash scripts/emergency-revert.sh` from the repo. Reverts the theme to Breeze (PAM is left alone — `install-pam.sh` has its own auto-revert on misconfig).
+4. **Ctrl+Alt+F1** → return to the locked GUI session, unlock via the standard Breeze prompt.
+
+Theme files stay installed; re-enable later via the two `kwriteconfig5` lines printed at the end of the script.
+
 ## Configuration
 
 `~/.config/kde-lockscreen.conf` (INI format):
