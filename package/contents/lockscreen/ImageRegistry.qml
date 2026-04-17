@@ -4,6 +4,7 @@ Item {
     id: registry
 
     property var _entries: []
+    property string saveDir: _homeDir() + "/Pictures/kde-lockscreen-saves"
     property string cacheDir: Qt.resolvedUrl("file://" + Qt.application.arguments[0])  // placeholder
         .toString()
     property string manifestPath: {
@@ -15,6 +16,10 @@ Item {
     signal entriesChanged()
 
     function _load() {
+        // Ensure saveDir exists (silent no-op if it does)
+        var mkReq = new XMLHttpRequest()
+        mkReq.open("PUT", "file://" + saveDir + "/.keep", false)
+        try { mkReq.send("") } catch (e) { /* ignore */ }
         var xhr = new XMLHttpRequest()
         var url = "file://" + _homeDir() + "/.cache/kde-lockscreen/manifest.json"
         xhr.open("GET", url, false)  // synchronous OK — file is local + tiny
@@ -75,6 +80,42 @@ Item {
         } catch (e) {
             console.warn("ImageRegistry: manifest write failed:", e)
         }
+    }
+
+    function saveImage(filePath) {
+        // Returns one of: "saved", "exists", "failed"
+        var p = filePath.replace(/^file:\/\//, "")
+        var entry = null
+        for (var i = 0; i < _entries.length; i++) {
+            if (_entries[i].path === p) { entry = _entries[i]; break }
+        }
+        if (!entry) return "failed"
+
+        // Build target: <saveDir>/<source>-<date>-<basename>
+        var basename = p.split("/").pop()
+        var target = saveDir + "/" + entry.source + "-" + entry.date + "-" + basename
+
+        // Check existence via HEAD
+        var check = new XMLHttpRequest()
+        check.open("HEAD", "file://" + target, false)
+        try { check.send(null) } catch (e) {}
+        if (check.status === 200) return "exists"
+
+        // Read source
+        var reader = new XMLHttpRequest()
+        reader.open("GET", "file://" + p, false)
+        reader.overrideMimeType("text/plain; charset=x-user-defined")
+        try { reader.send(null) } catch (e) { return "failed" }
+        if (reader.status !== 200 && reader.status !== 0) return "failed"
+
+        // Write target
+        var writer = new XMLHttpRequest()
+        writer.open("PUT", "file://" + target, false)
+        try { writer.send(reader.responseText) } catch (e) { return "failed" }
+        if (writer.status !== 200 && writer.status !== 0 && writer.status !== 201) return "failed"
+
+        markSaved(filePath)
+        return "saved"
     }
 
     Component.onCompleted: _load()
