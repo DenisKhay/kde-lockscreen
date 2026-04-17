@@ -48,43 +48,8 @@ Item {
         onClicked: root.clicked()
     }
 
-    // Toast: floats above the hint. Sized and colored to actually catch the
-    // eye — earlier version was too subtle to notice.
-    Rectangle {
-        id: toast
-        anchors.right: root.right
-        anchors.bottom: root.top
-        anchors.bottomMargin: 10
-        color: "#f2000000"
-        border.color: "#55ffffff"
-        border.width: 1
-        radius: 8
-        visible: opacity > 0
-        opacity: 0
-        width: toastText.implicitWidth + 32
-        height: toastText.implicitHeight + 18
-
-        Text {
-            id: toastText
-            anchors.centerIn: parent
-            color: "white"
-            font.pixelSize: 15
-            font.family: "DejaVu Sans"
-            font.weight: Font.Medium
-            text: ""
-        }
-
-        SequentialAnimation on opacity {
-            id: toastAnim
-            running: false
-            NumberAnimation { from: 0.0; to: 1.0; duration: 180 }
-            PauseAnimation { duration: 1800 }
-            NumberAnimation { from: 1.0; to: 0.0; duration: 400; easing.type: Easing.InQuad }
-        }
-    }
-
-    // Small "press pulse" on the button itself — instant feedback the click
-    // registered, even if the toast hasn't shown yet.
+    // Pulse the button briefly to confirm the click. The label flip to
+    // "Saved ✓" is the persistent indicator.
     SequentialAnimation {
         id: pulseAnim
         running: false
@@ -92,9 +57,8 @@ Item {
         NumberAnimation { target: btn; property: "scale"; from: 1.15; to: 1.0; duration: 140; easing.type: Easing.OutBack }
     }
 
-    function showToast(msg) {
-        toastText.text = msg
-        toastAnim.restart()
+    // Back-compat no-op in case callers still invoke showToast().
+    function showToast(_msg) {
         pulseAnim.restart()
     }
 }
