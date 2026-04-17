@@ -7,6 +7,7 @@
     <group name="General">
         <entry name="pinLength" type="Int"><default>6</default></entry>
         <entry name="autoSubmit" type="Bool"><default>true</default></entry>
+        <entry name="idleSubmitMs" type="Int"><default>10000</default></entry>
         <entry name="dotSizeMm" type="Double"><default>4.0</default></entry>
         <entry name="blurRadius" type="Int"><default>32</default></entry>
         <entry name="dimAlpha" type="Double"><default>0.4</default></entry>

@@ -6,6 +6,7 @@ ColumnLayout {
     id: root
     property alias cfg_pinLength: pinLengthSpin.value
     property alias cfg_autoSubmit: autoSubmitCheck.checked
+    property alias cfg_idleSubmitMs: idleSubmitSpin.value
     property alias cfg_dotSizeMm: dotSizeSpin.value
     property alias cfg_blurRadius: blurSpin.value
     property alias cfg_dimAlpha: dimSpin.value
@@ -21,8 +22,15 @@ ColumnLayout {
         title: "PIN"
         Layout.fillWidth: true
         ColumnLayout {
-            SpinBox { id: pinLengthSpin; from: 4; to: 8; editable: true }
-            CheckBox { id: autoSubmitCheck; text: "Auto-submit at fixed length" }
+            RowLayout {
+                Label { text: "PIN length" }
+                SpinBox { id: pinLengthSpin; from: 4; to: 8; editable: true }
+            }
+            CheckBox { id: autoSubmitCheck; text: "Auto-submit at configured length" }
+            RowLayout {
+                Label { text: "Idle auto-submit (ms)" }
+                SpinBox { id: idleSubmitSpin; from: 3000; to: 60000; stepSize: 1000; editable: true }
+            }
         }
     }
 
