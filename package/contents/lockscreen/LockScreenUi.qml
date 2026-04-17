@@ -172,10 +172,13 @@ Item {
         target: typeof authenticator !== "undefined" ? authenticator : null
         ignoreUnknownSignals: true
         function onFailed() {
-            console.warn("[LockScreenUi] authenticator.failed")
+            console.warn("[LockScreenUi] authenticator.failed — restarting PAM session")
             root.submitting = false
             pin.clear()
             root.rootWrongPin()
+            // After failure, PAM has closed the conversation. Restart it so
+            // the user can try again. Short delay matches Breeze's graceLock.
+            graceRestartTimer.restart()
         }
         function onSucceeded() {
             console.warn("[LockScreenUi] authenticator.succeeded — unlocking")
@@ -190,6 +193,21 @@ Item {
         }
         function onInfoMessage(msg) { console.warn("[LockScreenUi] info: " + msg) }
         function onErrorMessage(msg) { console.warn("[LockScreenUi] error: " + msg) }
+    }
+
+    // Re-starts the PAM conversation after a failed attempt. PAM closes its
+    // session on failed(); if we don't call tryUnlock() again the next respond
+    // goes into the void.
+    Timer {
+        id: graceRestartTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            if (typeof authenticator !== "undefined" && authenticator !== null) {
+                console.warn("[LockScreenUi] restarting authenticator.tryUnlock()")
+                authenticator.tryUnlock()
+            }
+        }
     }
 
     // Kick off the PAM session once at startup so it sends us a `prompt`.
