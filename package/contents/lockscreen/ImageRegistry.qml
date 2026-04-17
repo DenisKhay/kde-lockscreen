@@ -5,7 +5,8 @@ Item {
 
     property var _entries: []
     property var _seen: ({})     // path -> true for images already shown this session
-    property int _pickIndex: 0
+    property var _history: []    // ordered list of paths shown this session
+    property int _historyPos: -1 // pointer into _history
     property string saveDir: _homeDir() + "/Pictures/kde-lockscreen-saves"
 
     readonly property int unseenRemaining: _orderedUsable()
@@ -65,28 +66,60 @@ Item {
         return _orderedUsable()
     }
 
+    // Initial image on greeter load. Pushes it into the nav history.
     function pickForScreen(index) {
         var list = _orderedUsable()
         if (list.length === 0) list = _entries
         if (list.length === 0) return Qt.resolvedUrl("fallback.jpg").toString()
-
-        // Prefer first unseen in priority order.
-        var pick = null
-        for (var i = 0; i < list.length; i++) {
-            if (!_seen[list[i].path]) { pick = list[i]; break }
-        }
-        // If everything seen, wrap around using pickIndex.
-        if (!pick) pick = list[_pickIndex % list.length]
-
+        var pick = list[0]
         _seen[pick.path] = true
-        _pickIndex += 1
+        if (_history.length === 0) {
+            _history = [pick.path]
+            _historyPos = 0
+        }
+        return "file://" + pick.path
+    }
+
+    // Forward navigation. If we're sitting mid-history (user pressed Left
+    // earlier), step forward through it. Otherwise fetch a new image and mark
+    // the CURRENT one as disliked — that's the "skip forever" semantics.
+    function next() {
+        if (_historyPos < _history.length - 1) {
+            _historyPos += 1
+            return "file://" + _history[_historyPos]
+        }
+        // Entering new territory: dislike the current image (skip forever).
+        if (_historyPos >= 0) {
+            var cur = _history[_historyPos]
+            for (var i = 0; i < _entries.length; i++) {
+                if (_entries[i].path === cur) _entries[i].disliked = true
+            }
+            _writeManifest()
+        }
+        var list = _orderedUsable()
+        if (list.length === 0) list = _entries
+        if (list.length === 0) return Qt.resolvedUrl("fallback.jpg").toString()
+        var pick = null
+        for (var j = 0; j < list.length; j++) {
+            if (!_seen[list[j].path]) { pick = list[j]; break }
+        }
+        if (!pick) pick = list[_history.length % list.length]
+        _seen[pick.path] = true
+        _history.push(pick.path)
+        _historyPos = _history.length - 1
         _maybeRequestRefill()
         return "file://" + pick.path
     }
 
-    function advance() {
-        // Kept as no-op for backward compat; pickForScreen itself advances.
+    // Backward navigation. Returns "" when there's nothing earlier.
+    function previous() {
+        if (_historyPos <= 0) return ""
+        _historyPos -= 1
+        return "file://" + _history[_historyPos]
     }
+
+    // Kept for compatibility — no-op now; history is managed by next()/previous().
+    function advance() {}
 
     function markDisliked(filePath) {
         var p = filePath.replace(/^file:\/\//, "")

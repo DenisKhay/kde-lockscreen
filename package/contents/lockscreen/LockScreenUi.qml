@@ -95,9 +95,7 @@ Item {
         NextImageHint {
             onClicked: {
                 root.markInteraction()
-                registry.markDisliked(root.currentImage)
-                registry.advance()
-                root.currentImage = registry.pickForScreen(0)
+                root.currentImage = registry.next()
                 saveHint.saved = false
             }
         }
@@ -158,10 +156,16 @@ Item {
         // Image gestures are arrow-keys ONLY — never letter keys, so that
         // passwords containing 'n' or 's' are typed normally, never stolen.
         if (event.key === Qt.Key_Right) {
-            registry.markDisliked(root.currentImage)
-            registry.advance()
-            root.currentImage = registry.pickForScreen(0)
+            root.currentImage = registry.next()
             saveHint.saved = false
+            event.accepted = true; return
+        }
+        if (event.key === Qt.Key_Left) {
+            var prev = registry.previous()
+            if (prev !== "") {
+                root.currentImage = prev
+                saveHint.saved = false
+            }
             event.accepted = true; return
         }
         if (event.key === Qt.Key_Down) {
