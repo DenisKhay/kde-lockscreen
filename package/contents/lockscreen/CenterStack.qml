@@ -75,5 +75,5 @@ Item {
         NumberAnimation { target: shakeXform; property: "x"; to: -12; duration: 50 }
         NumberAnimation { target: shakeXform; property: "x"; to: 0;   duration: 50 }
     }
-    onShake: shakeAnim.start()
+    onShake: { console.warn("[CenterStack] onShake -> shakeAnim.start()"); shakeAnim.start() }
 }

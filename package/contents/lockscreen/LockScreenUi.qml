@@ -140,41 +140,65 @@ Item {
         pinLength: root.pinLength
         autoSubmit: root.autoSubmit
         onSubmitted: function (pw) {
-            console.log("LockScreenUi: onSubmitted len=" + pw.length
-                        + " authPresent=" + (typeof authenticator !== "undefined"))
+            // Plasma's PAM authenticator API: tryUnlock() kicks off the
+            // session (called once at startup), respond(pw) sends the
+            // password when PAM has prompted for it. We were calling
+            // tryUnlock(pw) which IGNORED the argument — that's why every
+            // unlock was silent.
+            console.warn("[LockScreenUi] submit -> respond len=" + pw.length)
             if (typeof authenticator !== "undefined" && authenticator !== null) {
-                authenticator.tryUnlock(pw)
+                authenticator.respond(pw)
+            } else if (pw === "1234") {
+                testOkFlash.running = true
             } else {
-                // --testing: accept "1234". Flash a green tick so it's obvious
-                // Enter fired the submit path. Everything else shakes.
-                if (pw === "1234") {
-                    testOkFlash.running = true
-                } else {
-                    root.rootWrongPin()
-                }
+                root.rootWrongPin()
             }
         }
     }
 
     function rootWrongPin() {
-        // Shake but do NOT clear — user can append or press Enter again.
-        // Escape clears manually. Submit is only Enter or reaching pinLength
-        // with a new (untried) text; no timeout-based retry.
+        console.warn("[LockScreenUi] rootWrongPin -> center.shake()")
         center.shake()
     }
 
-    // Wire the PAM authenticator's failed signal so the center-stack shakes
-    // on wrong password. `authenticator` is the context property; in --testing
-    // mode it's undefined and the binding resolves to null, so the Connections
-    // is inert there.
+    // Plasma's PamAuthenticator signals: prompt/promptForSecret/succeeded/
+    // failed/infoMessage/errorMessage. We don't track prompt text explicitly —
+    // the user is always typing a password in our lockscreen.
     Connections {
         target: typeof authenticator !== "undefined" ? authenticator : null
         ignoreUnknownSignals: true
-        function onFailed() { root.rootWrongPin() }
+        function onFailed() {
+            console.warn("[LockScreenUi] authenticator.failed")
+            pin.clear()
+            root.rootWrongPin()
+        }
+        function onSucceeded() {
+            console.warn("[LockScreenUi] authenticator.succeeded — unlocking")
+            Qt.quit()
+        }
+        function onPrompt(msg) {
+            console.warn("[LockScreenUi] authenticator.prompt: " + msg)
+        }
+        function onPromptForSecret(msg) {
+            console.warn("[LockScreenUi] authenticator.promptForSecret: " + msg)
+        }
+        function onInfoMessage(msg) { console.warn("[LockScreenUi] info: " + msg) }
+        function onErrorMessage(msg) { console.warn("[LockScreenUi] error: " + msg) }
+    }
+
+    // Kick off the PAM session once at startup so it sends us a `prompt`.
+    // Without this call, respond() has no open dialogue with PAM.
+    Component.onCompleted: {
+        forceActiveFocus()
+        if (typeof authenticator !== "undefined" && authenticator !== null) {
+            console.warn("[LockScreenUi] calling authenticator.tryUnlock() (kick-off)")
+            authenticator.tryUnlock()
+        }
     }
 
     // Key routing — load-bearing trick for typing-without-focus
     Keys.onPressed: function (event) {
+        console.warn("[LockScreenUi] key=" + event.key + " text='" + event.text + "'")
         root.markInteraction()
         if (event.key === Qt.Key_Backspace) {
             pin.backspace(); event.accepted = true; return
@@ -214,5 +238,4 @@ Item {
         }
     }
 
-    Component.onCompleted: forceActiveFocus()
 }

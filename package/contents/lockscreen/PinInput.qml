@@ -27,12 +27,13 @@ Item {
         input.text = input.text.slice(0, -1)
     }
     function submit() {
-        // Enter. Submits current text unless it's identical to the last try.
-        if (input.text.length === 0) return
-        if (input.text === _lastAttempted) return
+        console.warn("[PinInput] submit() called len=" + input.text.length + " lastAttempted=" + _lastAttempted)
+        if (input.text.length === 0) { console.warn("[PinInput]   early-return: empty"); return }
+        if (input.text === _lastAttempted) { console.warn("[PinInput]   early-return: same as lastAttempted"); return }
         _tryText(input.text)
     }
     function _tryText(t) {
+        console.warn("[PinInput] _tryText -> emit submitted, len=" + t.length)
         _lastAttempted = t
         root.submitted(t)
     }
