@@ -1,0 +1,9 @@
+[Unit]
+Description=KDE lockscreen daily image fetcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/lib/kde-lockscreen/venv/bin/python -m kde_lockscreen.fetcher
+Nice=10

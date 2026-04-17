@@ -1,0 +1,12 @@
+[Unit]
+Description=KDE lockscreen sleep-inhibitor daemon
+After=plasma-core.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/kde-lockscreen/venv/bin/python -m kde_lockscreen.inhibitd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

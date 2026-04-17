@@ -1,0 +1,10 @@
+[Unit]
+Description=Fire the KDE lockscreen image fetcher daily at 06:00
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+RandomizedDelaySec=15min
+
+[Install]
+WantedBy=timers.target
