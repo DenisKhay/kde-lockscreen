@@ -9,14 +9,21 @@ Row {
     spacing: _dotSize * 0.6
 
     readonly property real _dotSize: dotSizeMm * Screen.pixelDensity
+    // Grow the dot row past pinLength so the user sees feedback when typing a
+    // password longer than their configured PIN length.
+    readonly property int _visible: Math.max(pinLength, filled)
 
     Repeater {
-        model: root.pinLength
+        model: root._visible
         delegate: Rectangle {
             width: root._dotSize
             height: root._dotSize
             radius: width / 2
-            color: index < root.filled ? "white" : "transparent"
+            // Within pinLength: white when filled. Past pinLength: pink tint
+            // so user sees they've gone past the auto-submit threshold.
+            color: index < root.filled
+                ? (index >= root.pinLength ? "#ffb0b0" : "white")
+                : "transparent"
             border.color: "white"
             border.width: 2
             opacity: index < root.filled ? 1.0 : 0.5

@@ -4,6 +4,7 @@ Item {
     id: registry
 
     property var _entries: []
+    property int _offset: 0
     property string saveDir: _homeDir() + "/Pictures/kde-lockscreen-saves"
     property string cacheDir: Qt.resolvedUrl("file://" + Qt.application.arguments[0])  // placeholder
         .toString()
@@ -47,12 +48,19 @@ Item {
 
     function pickForScreen(index) {
         var list = _usable()
+        // If everything is disliked, fall back to the full pool rather than
+        // showing the solid fallback — user still wants *something*.
+        if (list.length === 0) list = _entries
         if (list.length === 0) return Qt.resolvedUrl("fallback.jpg").toString()
-        // Deterministic: seeded by date + screen index
         var d = new Date()
-        var seed = (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate()) + index * 17
-        return "file://" + list[seed % list.length].path
+        var seed = (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate())
+                 + index * 17 + _offset
+        return "file://" + list[Math.abs(seed) % list.length].path
     }
+
+    // Called after a "next image" gesture to ensure the next pickForScreen
+    // returns a different entry.
+    function advance() { _offset += 1 }
 
     function markDisliked(filePath) {
         var p = filePath.replace(/^file:\/\//, "")

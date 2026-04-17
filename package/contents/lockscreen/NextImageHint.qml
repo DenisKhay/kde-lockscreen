@@ -10,10 +10,13 @@ Rectangle {
     Behavior on opacity { NumberAnimation { duration: 150 } }
 
     Text {
-        anchors.centerIn: parent
+        anchors.fill: parent
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
         color: "white"
         font.pixelSize: 18
-        text: "\u2715"  // ✕
+        font.bold: true
+        text: "×"
     }
 
     MouseArea {

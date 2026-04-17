@@ -16,10 +16,13 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
         Text {
-            anchors.centerIn: parent
+            anchors.fill: parent
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
             color: root.saved ? "#ff6070" : "white"
             font.pixelSize: 18
-            text: root.saved ? "\u2665" : "\u2193"  // ♥ filled when saved, ↓ otherwise
+            font.bold: true
+            text: root.saved ? "♥" : "↓"
         }
 
         MouseArea {
@@ -31,11 +34,11 @@ Item {
         }
     }
 
-    // Toast
+    // Toast (not a child of btn — parent is root, anchored above root itself)
     Rectangle {
         id: toast
-        anchors.right: parent.right
-        anchors.bottom: parent.top
+        anchors.right: root.right
+        anchors.bottom: root.top
         anchors.bottomMargin: 8
         color: "#cc000000"
         radius: 6

@@ -17,14 +17,21 @@ rm -rf "$LNF_DIR" "$DAEMON_DIR"
 
 echo ">> Reverting theme to Breeze"
 kwriteconfig5 --file kscreenlockerrc --group Greeter --key Theme org.kde.breeze.desktop
+kwriteconfig5 --file kscreenlockerrc --group Greeter --key LookAndFeelPackage org.kde.breeze.desktop
 
-echo ">> Restoring PAM (most recent backup)"
-BACKUP="$(ls -t /etc/pam.d/kde.bak.* 2>/dev/null | head -n1 || true)"
+echo ">> Restoring PAM"
+# install-pam.sh writes /etc/pam.d/kscreenlocker and backs up to kscreenlocker.bak.YYYY-MM-DD
+BACKUP="$(ls -t /etc/pam.d/kscreenlocker.bak.* 2>/dev/null | head -n1 || true)"
 if [[ -n "$BACKUP" ]]; then
-  sudo install -m644 "$BACKUP" /etc/pam.d/kde
-  echo ">> Restored from $BACKUP"
+  sudo install -m644 "$BACKUP" /etc/pam.d/kscreenlocker
+  echo ">> Restored /etc/pam.d/kscreenlocker from $BACKUP"
+elif [[ -f /etc/pam.d/kscreenlocker ]]; then
+  # No prior backup means the file was created fresh — safer to remove it so
+  # PAM falls back to /etc/pam.d/other.
+  sudo rm -f /etc/pam.d/kscreenlocker
+  echo ">> Removed /etc/pam.d/kscreenlocker (no backup to restore from)"
 else
-  echo ">> No PAM backup found. Skipping."
+  echo ">> No PAM file to revert. Skipping."
 fi
 
 echo ">> Done."
