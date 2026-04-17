@@ -11,7 +11,7 @@
 Replace the default KDE Plasma lock screen with a custom one that:
 
 1. Unlocks **fast** (<200 ms from last keystroke to desktop) — the current 3+ second delay is the primary pain point.
-2. Shows a **different Bing-style background image per monitor**, rotating daily, with a **"next image" gesture** if an image isn't liked.
+2. Shows a **different Bing-style background image per monitor**, rotating daily, with a **"next image" gesture** if an image isn't liked and a **"save image" gesture** to keep images you like to `~/Pictures/`.
 3. Accepts the PIN **without clicking anything** (type immediately) and shows entered characters as **physically-sized dots (3–5 mm)**.
 4. **Never suspends** the machine while locked, though the display may turn off.
 5. Shows the **username** and a **clock/date**.
@@ -84,7 +84,8 @@ kde-lockscreen/
 │           ├── PinInput.qml            # ~80 LOC, invisible TextInput
 │           ├── PinDots.qml             # ~60 LOC, mm-sized circles
 │           ├── ImageRegistry.qml       # ~50 LOC, reads manifest
-│           ├── NextImageHint.qml       # ~30 LOC, bottom-right cue
+│           ├── NextImageHint.qml       # ~30 LOC, bottom-right "skip" cue
+│           ├── SaveImageHint.qml       # ~40 LOC, bottom-right "save" icon + toast
 │           ├── config.qml              # ~120 LOC, settings panel
 │           ├── config.xml              # ~40 LOC, schema
 │           └── fallback.jpg            # bundled gradient
@@ -116,7 +117,7 @@ kde-lockscreen/
 └── README.md
 ```
 
-Total QML/config: ~755 LOC, 10 files, none over 150 LOC. Python: ~400 LOC, 2 daemons + 4 source modules.
+Total QML/config: ~795 LOC, 11 files, none over 150 LOC. Python: ~400 LOC, 2 daemons + 4 source modules.
 
 ---
 
@@ -131,7 +132,10 @@ Special keys:
 - **Backspace**: removes one character.
 - **Enter**: submits (even if autoSubmit is on and length is unmet).
 - **Right arrow** or **N key**: "next image" on the **primary screen**. To target the secondary screen, click its own `NextImageHint` (each screen renders its own hint in its own bottom-right corner).
+- **Down arrow** or **S key**: "save image" — copies the primary screen's current image to `~/Pictures/kde-lockscreen-saves/` (configurable). To save the secondary screen's image, click its own `SaveImageHint` icon.
 - **Escape**: clears the current PIN input without error.
+
+Per-screen bottom-right corner renders a small horizontal pair: `[↓ save]  [✕ skip]` — both icons ~20 px, semi-transparent, fading on hover.
 
 ### 5.2 Multi-monitor backgrounds
 
@@ -220,6 +224,18 @@ Right arrow / N key targets the primary screen's image. Clicking a per-screen `N
 
 Tomorrow's fetch sees the disliked flag and won't re-pick that exact image (by URL hash). Disliked entries are evicted with the normal age policy.
 
+### 6.6 "Save image" gesture
+
+Down arrow / S key targets the primary screen; clicking a per-screen `SaveImageHint` targets that screen. Flow:
+
+1. `ImageRegistry.saveImage(currentPath, screenIndex)` reads the cached JPEG bytes from `~/.cache/kde-lockscreen/`.
+2. Writes to `<saveDir>/<source>-<YYYY-MM-DD>-<shortHash>.jpg` (default `saveDir = ~/Pictures/kde-lockscreen-saves/`, auto-created on first save).
+3. If the target file already exists (same source + date), it's a no-op — the gesture is idempotent.
+4. On success, `SaveImageHint` briefly shows a 2-second toast ("Saved to Pictures"); on failure (disk full, permission denied), shows "Save failed" with a journal log entry.
+5. Also stamps `saved: true` in `manifest.json` so the UI can show a filled-heart state for the rest of the lock session.
+
+Saved images are independent of the cache lifecycle — cache eviction does not touch them. The user owns the files under `~/Pictures/` from that point.
+
 ---
 
 ## 7. PAM optimization strategy
@@ -286,6 +302,9 @@ usePicsumInstead=true
 [Cache]
 maxDays=14
 cacheDir=~/.cache/kde-lockscreen
+
+[Save]
+saveDir=~/Pictures/kde-lockscreen-saves
 ```
 
 Reload behavior: config changes apply on next lock. No hot-reload in v1.
@@ -304,6 +323,8 @@ Reload behavior: config changes apply on next lock. No hot-reload in v1.
 | Wrong PIN                      | Delegate lockout to `pam_faillock` — don't duplicate  |
 | Image source 404 / 500         | Skip that source; other sources still attempted       |
 | Image > 50 MB                  | Reject; log; try next source                          |
+| `saveDir` not writable         | Toast "Save failed"; log; don't crash                 |
+| Save target already exists     | No-op (idempotent); toast "Already saved"             |
 
 ---
 
@@ -315,8 +336,9 @@ Reload behavior: config changes apply on next lock. No hot-reload in v1.
 4. **PAM benchmark**: `time pamtester kde $USER authenticate <<< "$PIN"`. Must be < 200 ms after install.
 5. **Real lock flow**: `loginctl lock-session` → type PIN. Verify dots render, multi-monitor, unlock latency.
 6. **"Next image"**: press N / right arrow mid-lock; cached manifest should gain a `disliked: true` entry for that path.
+7. **"Save image"**: press S / down arrow mid-lock; verify a new file appears under `~/Pictures/kde-lockscreen-saves/` and toast shows.
 
-No automated unit tests for the QML layer in v1 — manual smoke on each of the 6 steps above is sufficient for this scope. Python daemons get simple `pytest` coverage for the source adapters and manifest-manipulation logic.
+No automated unit tests for the QML layer in v1 — manual smoke on each of the 7 steps above is sufficient for this scope. Python daemons get simple `pytest` coverage for the source adapters and manifest-manipulation logic.
 
 ---
 
