@@ -6,12 +6,31 @@ if [[ "$EUID" -ne 0 ]]; then
   exit 1
 fi
 
-# Plasma 5.27's kscreenlocker uses the PAM service name "kscreenlocker".
-# On Kubuntu 24.04 that file doesn't exist by default — PAM falls back to
-# /etc/pam.d/other → common-auth, which includes pam_fprintd with a 10s timeout.
-# That fingerprint wait is almost certainly the 3+s unlock delay.
+# Plasma 5.27's kscreenlocker_greet opens PAM service "kde" (hardcoded in
+# upstream greeterapp.cpp:139). On Kubuntu 24.04 /etc/pam.d/kde doesn't exist
+# by default — PAM falls back to /etc/pam.d/other → common-auth, which
+# includes pam_fprintd with a 10s timeout. That fingerprint wait is almost
+# certainly the 3+s unlock delay.
+#
+# Before trusting this assumption on a different machine, verify the real
+# service name the greeter is using:
+#   journalctl --since '30 min ago' | grep -oE 'kscreenlocker_greet.*pam_unix\([^:]+:auth\)' | head
+# The token in parens is what pam_start() was actually called with.
 
-SERVICE="kscreenlocker"
+echo ">> Probing journalctl for the real PAM service the greeter opens..."
+REAL_SVC="$(journalctl --since '30 min ago' 2>/dev/null \
+  | grep -oE 'kscreenlocker_greet.*pam_unix\([^:]+:auth\)' \
+  | grep -oE 'pam_unix\([^:]+' | sed 's/pam_unix(//' | sort -u | head -n1 || true)"
+if [[ -n "$REAL_SVC" ]]; then
+  echo "   journalctl says greeter opened: $REAL_SVC"
+  if [[ "$REAL_SVC" != "kde" ]]; then
+    echo "   !!! Expected 'kde' on Plasma 5.27. Your KDE build may differ — update SERVICE below."
+  fi
+else
+  echo "   No recent greeter attempt in journal. Trigger a failed unlock, then re-run."
+fi
+
+SERVICE="kde"
 PAM_LIVE="/etc/pam.d/$SERVICE"
 PAM_OTHER="/etc/pam.d/other"
 PAM_TIMED="/etc/pam.d/${SERVICE}-timed"
@@ -113,7 +132,7 @@ print("")
 print(">> Map the top-timing module numbers to their PAM lines:")
 import subprocess
 expanded = subprocess.run(["bash","-c",
-    'source_file=/etc/pam.d/kscreenlocker; [[ -f "$source_file" ]] || source_file=/etc/pam.d/other;'
+    'source_file=/etc/pam.d/kde; [[ -f "$source_file" ]] || source_file=/etc/pam.d/kscreenlocker; [[ -f "$source_file" ]] || source_file=/etc/pam.d/other;'
     'expand() { while IFS= read -r line; do if [[ "$line" =~ ^@include[[:space:]]+([a-zA-Z0-9_-]+)$ ]]; then expand "/etc/pam.d/${BASH_REMATCH[1]}"; else echo "$line"; fi; done < "$1"; };'
     'expand "$source_file"'
 ], capture_output=True, text=True).stdout.splitlines()
