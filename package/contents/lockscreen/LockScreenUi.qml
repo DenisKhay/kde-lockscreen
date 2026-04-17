@@ -14,7 +14,7 @@ Item {
     // --testing mode (where it is not injected).
 
     // Config (populated from KConfig in Plasma; defaults here for --testing).
-    property int pinLength: 6
+    property int pinLength: 8
     property real dotSizeMm: 4.0
     property real blurRadius: 0        // disabled by default
     property real dimAlpha: 0.0        // disabled by default

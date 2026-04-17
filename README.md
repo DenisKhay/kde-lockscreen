@@ -52,7 +52,7 @@ Reverts the theme to Breeze, removes systemd units, removes the daemon, and rest
 
 ```ini
 [General]
-pinLength = 6
+pinLength = 8
 autoSubmit = true
 idleSubmitMs = 10000
 dotSizeMm = 4.0

@@ -5,7 +5,7 @@
       http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
     <kcfgfile name=""/>
     <group name="General">
-        <entry name="pinLength" type="Int"><default>6</default></entry>
+        <entry name="pinLength" type="Int"><default>8</default></entry>
         <entry name="autoSubmit" type="Bool"><default>true</default></entry>
         <entry name="idleSubmitMs" type="Int"><default>10000</default></entry>
         <entry name="dotSizeMm" type="Double"><default>4.0</default></entry>
