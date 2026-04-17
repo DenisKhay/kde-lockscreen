@@ -22,9 +22,9 @@ Item {
             Text {
                 anchors.centerIn: parent
                 color: "white"
-                text: "S"
-                font.pixelSize: 12
-                font.family: "sans-serif"
+                text: "↓"
+                font.pixelSize: 13
+                font.family: "DejaVu Sans"
             }
         }
 
@@ -33,7 +33,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             color: "white"
             font.pixelSize: 13
-            font.family: "sans-serif"
+            font.family: "DejaVu Sans"
             text: root.saved ? "Saved ✓" : "Save"
         }
     }

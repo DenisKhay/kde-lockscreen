@@ -24,6 +24,10 @@ Item {
     // guarantees the window is always fully covered.
     property string currentImage: ""
 
+    // Any user input (mouse move, click, key, image gesture) flips this true
+    // and keeps the PIN UI visible even before the first keystroke.
+    property bool userInteracted: false
+
     ImageRegistry {
         id: registry
         Component.onCompleted: root.currentImage = pickForScreen(0)
@@ -37,6 +41,17 @@ Item {
         fitMode: root.fitMode
     }
 
+    // Input handlers: fire on mouse movement / click anywhere on the screen
+    // without stealing events from child MouseAreas (SaveImageHint etc).
+    HoverHandler {
+        id: hoverTracker
+        onPointChanged: root.userInteracted = true
+    }
+    TapHandler {
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        onTapped: root.userInteracted = true
+    }
+
     // Save/skip icons, bottom-right of the screen
     Row {
         anchors.right: parent.right
@@ -48,6 +63,7 @@ Item {
             id: saveHint
             saved: false
             onClicked: {
+                root.userInteracted = true
                 var r = registry.saveImage(root.currentImage)
                 if (r === "saved") { saveHint.showToast("Saved to Pictures"); saveHint.saved = true }
                 else if (r === "exists") saveHint.showToast("Already saved")
@@ -57,6 +73,7 @@ Item {
 
         NextImageHint {
             onClicked: {
+                root.userInteracted = true
                 registry.markDisliked(root.currentImage)
                 registry.advance()
                 root.currentImage = registry.pickForScreen(0)
@@ -72,7 +89,7 @@ Item {
         pinFilled: pin.text.length
         dotSizeMm: root.dotSizeMm
         username: root.username
-        active: pin.text.length > 0
+        active: pin.text.length > 0 || root.userInteracted
     }
 
     PinInput {
@@ -107,6 +124,7 @@ Item {
 
     // Key routing — load-bearing trick for typing-without-focus
     Keys.onPressed: function (event) {
+        root.userInteracted = true
         if (event.key === Qt.Key_Backspace) {
             pin.backspace(); event.accepted = true; return
         }
@@ -116,25 +134,21 @@ Item {
         if (event.key === Qt.Key_Escape) {
             pin.clear(); event.accepted = true; return
         }
-        // Save/next shortcuts only work while idle (no PIN entered yet).
-        // Once the user starts typing, ALL letters go to the PIN so 'S' in a
-        // password is never stolen by the save shortcut. Arrow keys also
-        // reserved to avoid surprises.
-        if (pin.text.length === 0) {
-            if (event.key === Qt.Key_Right || event.key === Qt.Key_N) {
-                registry.markDisliked(root.currentImage)
-                registry.advance()
-                root.currentImage = registry.pickForScreen(0)
-                saveHint.saved = false
-                event.accepted = true; return
-            }
-            if (event.key === Qt.Key_Down || event.key === Qt.Key_S) {
-                var r = registry.saveImage(root.currentImage)
-                if (r === "saved") { saveHint.showToast("Saved to Pictures"); saveHint.saved = true }
-                else if (r === "exists") saveHint.showToast("Already saved")
-                else saveHint.showToast("Save failed")
-                event.accepted = true; return
-            }
+        // Image gestures are arrow-keys ONLY — never letter keys, so that
+        // passwords containing 'n' or 's' are typed normally, never stolen.
+        if (event.key === Qt.Key_Right) {
+            registry.markDisliked(root.currentImage)
+            registry.advance()
+            root.currentImage = registry.pickForScreen(0)
+            saveHint.saved = false
+            event.accepted = true; return
+        }
+        if (event.key === Qt.Key_Down) {
+            var r = registry.saveImage(root.currentImage)
+            if (r === "saved") { saveHint.showToast("Saved to Pictures"); saveHint.saved = true }
+            else if (r === "exists") saveHint.showToast("Already saved")
+            else saveHint.showToast("Save failed")
+            event.accepted = true; return
         }
         // Printable: append to PIN
         if (event.text && event.text.length > 0 && event.text.charCodeAt(0) >= 32) {
