@@ -6,12 +6,12 @@
 # sanity check and forward-compat with a future KDE rename. See
 # vault://kde-lockscreen/bugs/pam-service-name-mismatch for the full debug.
 #
-# Password-only auth. Fingerprint unlock is handled by a separate user
-# daemon (kde_lockscreen.fprintd_watcher) that runs fprintd Verify while the
-# session is locked and calls logind Session.UnlockSession on a match —
-# entirely outside PAM. pam_fprintd was briefly in this stack (9515cf7,
-# reverted) but doesn't poll pam_conv, so it blocked the password path for
-# its full timeout and only gave the user ~3s of finger activity per lock.
+# Password-only auth. Fingerprint unlock on the lockscreen is intentionally
+# disabled here — pam_fprintd blocks the auth stack for its full timeout
+# without polling pam_conv, which means typed passwords get buffered until
+# the timeout expires and the reader only blinks for ~3s per lock cycle.
+# The trade-off is fine on this machine: fingerprint still works elsewhere
+# (sudo, login, polkit) because we only override the lockscreen service.
 #
 # pam_faildelay delay=0 cancels the default 2s post-failure delay of pam_unix
 # so wrong passwords respond instantly — fine on a personal laptop where the

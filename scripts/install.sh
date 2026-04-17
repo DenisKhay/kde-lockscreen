@@ -89,8 +89,7 @@ systemctl --user daemon-reload
 systemctl --user enable --now \
     kde-lockscreen-fetcher.timer \
     kde-lockscreen-inhibitd.service \
-    kde-lockscreen-refill.timer \
-    kde-lockscreen-fprintd-watcher.service
+    kde-lockscreen-refill.timer
 
 # ---- save dir ----
 echo ">> Ensuring save directory exists at $SAVE_DIR"
