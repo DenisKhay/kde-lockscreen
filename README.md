@@ -86,7 +86,7 @@ Changes take effect on the next lock.
 # Run tests
 make test
 
-# Install in dev mode (rsync instead of cp, for quick QML iteration)
+# Install just the QML package (skip venv/systemd/PAM) for quick iteration
 make install-dev
 
 # Preview in a window, no real lock
