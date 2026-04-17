@@ -11,18 +11,19 @@ Item {
         anchors.fill: parent
         radius: 18
         color: "#80000000"
-        border.color: "white"; border.width: 1
-        opacity: hover.containsMouse ? 1.0 : 0.5
+        border.color: "#aaffffff"; border.width: 1
+        opacity: hover.containsMouse ? 1.0 : 0.55
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
-        Text {
-            anchors.fill: parent
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            color: root.saved ? "#ff6070" : "white"
-            font.pixelSize: 18
-            font.bold: true
-            text: root.saved ? "♥" : "↓"
+        Image {
+            anchors.centerIn: parent
+            width: 18; height: 18
+            source: root.saved
+                ? Qt.resolvedUrl("icons/heart-filled.svg")
+                : Qt.resolvedUrl("icons/heart-outline.svg")
+            sourceSize: Qt.size(36, 36)
+            fillMode: Image.PreserveAspectFit
+            smooth: true
         }
 
         MouseArea {
@@ -34,7 +35,6 @@ Item {
         }
     }
 
-    // Toast (not a child of btn — parent is root, anchored above root itself)
     Rectangle {
         id: toast
         anchors.right: root.right
