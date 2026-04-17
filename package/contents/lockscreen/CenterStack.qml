@@ -7,11 +7,17 @@ Column {
     property int pinFilled: 0
     property real dotSizeMm: 4.0
     property string username: "user"
+    property bool active: false   // becomes true on first keystroke
 
     signal shake()
 
     Clock {
         anchors.horizontalCenter: parent.horizontalCenter
+        compact: !root.active
+        // Extra top padding in compact mode so the huge clock visually sits
+        // where the normal clock+date would.
+        topPadding: root.active ? 0 : 60
+        Behavior on topPadding { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
     }
 
     Text {
@@ -19,6 +25,11 @@ Column {
         color: "white"
         font.pixelSize: 24
         text: root.username
+        opacity: root.active ? 1.0 : 0.0
+        height: root.active ? implicitHeight : 0
+        clip: true
+        Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+        Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
     }
 
     PinDots {
@@ -27,6 +38,11 @@ Column {
         pinLength: root.pinLength
         filled: root.pinFilled
         dotSizeMm: root.dotSizeMm
+        opacity: root.active ? 1.0 : 0.0
+        height: root.active ? _dotSize : 0
+        clip: true
+        Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+        Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
     }
 
     SequentialAnimation {

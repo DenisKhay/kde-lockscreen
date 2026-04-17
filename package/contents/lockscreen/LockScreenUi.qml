@@ -72,6 +72,7 @@ Item {
         pinFilled: pin.text.length
         dotSizeMm: root.dotSizeMm
         username: root.username
+        active: pin.text.length > 0
     }
 
     PinInput {
