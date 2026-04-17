@@ -27,6 +27,9 @@ systemctl --user enable --now \
     kde-lockscreen-inhibitd.service \
     kde-lockscreen-refill.timer
 
+echo ">> Ensuring save directory exists"
+mkdir -p "$HOME/Pictures/kde-lockscreen-saves"
+
 echo ">> Seeding image cache"
 systemctl --user start kde-lockscreen-fetcher.service || true
 

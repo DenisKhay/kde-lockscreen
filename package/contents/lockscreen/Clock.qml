@@ -4,6 +4,8 @@ Item {
     id: root
     property bool compact: false
     property alias dateOpacity: dateText.opacity
+    // Time text opacity while idle (compact). 1.0 when active.
+    property real idleTimeOpacity: 0.55
     property var _now: new Date()
 
     // Fixed natural height for smoother animations
@@ -23,12 +25,14 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         y: 0
         color: "white"
-        font.family: "Noto Sans"
-        font.pixelSize: 96
-        font.weight: Font.Thin
-        font.letterSpacing: -2
+        font.family: "DejaVu Sans"
+        font.pixelSize: 104
+        font.weight: Font.Light
+        font.letterSpacing: 1
         text: Qt.formatTime(root._now, "HH:mm")
         transformOrigin: Item.Center
+        opacity: root.compact ? root.idleTimeOpacity : 1.0
+        Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
     }
 
     Text {
@@ -37,9 +41,10 @@ Item {
         anchors.top: timeText.bottom
         anchors.topMargin: 4
         color: "white"
-        font.family: "Noto Sans"
+        font.family: "DejaVu Sans"
         font.pixelSize: 18
-        font.weight: Font.Normal
+        font.weight: Font.Light
+        font.letterSpacing: 0.5
         text: Qt.formatDate(root._now, "dddd, d MMMM yyyy")
     }
 }

@@ -116,21 +116,25 @@ Item {
         if (event.key === Qt.Key_Escape) {
             pin.clear(); event.accepted = true; return
         }
-        // Next image: Right arrow or 'N'
-        if (event.key === Qt.Key_Right || event.key === Qt.Key_N) {
-            registry.markDisliked(root.currentImage)
-            registry.advance()
-            root.currentImage = registry.pickForScreen(0)
-            saveHint.saved = false
-            event.accepted = true; return
-        }
-        // Save image: Down arrow or 'S'
-        if (event.key === Qt.Key_Down || event.key === Qt.Key_S) {
-            var r = registry.saveImage(root.currentImage)
-            if (r === "saved") { saveHint.showToast("Saved to Pictures"); saveHint.saved = true }
-            else if (r === "exists") saveHint.showToast("Already saved")
-            else saveHint.showToast("Save failed")
-            event.accepted = true; return
+        // Save/next shortcuts only work while idle (no PIN entered yet).
+        // Once the user starts typing, ALL letters go to the PIN so 'S' in a
+        // password is never stolen by the save shortcut. Arrow keys also
+        // reserved to avoid surprises.
+        if (pin.text.length === 0) {
+            if (event.key === Qt.Key_Right || event.key === Qt.Key_N) {
+                registry.markDisliked(root.currentImage)
+                registry.advance()
+                root.currentImage = registry.pickForScreen(0)
+                saveHint.saved = false
+                event.accepted = true; return
+            }
+            if (event.key === Qt.Key_Down || event.key === Qt.Key_S) {
+                var r = registry.saveImage(root.currentImage)
+                if (r === "saved") { saveHint.showToast("Saved to Pictures"); saveHint.saved = true }
+                else if (r === "exists") saveHint.showToast("Already saved")
+                else saveHint.showToast("Save failed")
+                event.accepted = true; return
+            }
         }
         // Printable: append to PIN
         if (event.text && event.text.length > 0 && event.text.charCodeAt(0) >= 32) {
